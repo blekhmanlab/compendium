@@ -1,20 +1,32 @@
+# This script opens an XML file of exported BioSample search results
+# (see notes.txt), parses the samples that include what we're looking for,
+# and saves them to a database.
+
 from collections import defaultdict
-import os
-import sys
+import sys # for the command-line params
 import xml.etree.ElementTree as ET
 
-isolation_source = defaultdict(int)
-env_material = defaultdict(int)
+#import db
+
+#connection = db.Connection()
+
+# for counting entries in each field:
 source = defaultdict(int)
 host = defaultdict(int)
-tags = defaultdict(int)
+# for tracking which tags were used for the "host" and "source" fields:
+used_host = defaultdict(int)
+used_source = defaultdict(int)
 
+source_tags = [
+        'host_body_product','body_product','host_body_habitat',
+        'sample_type','isolation_source','env_medium'
+    ]
+host_tags = ['host_taxid','host']
+# load the XML file
 tree = ET.parse(sys.argv[1])
-root = tree.getroot()
-biosamples = [x for x in root]
+biosamples = tree.getroot()
 
-noproject = 0
-nosra = 0
+# iterate through each entry in the file
 for sample in biosamples:
     # find SRA ID of sample
     # example: <BioSample> <Ids> <Id db="SRA">SRS5588834</Id> </Ids> </BioSample>
@@ -23,43 +35,49 @@ for sample in biosamples:
         if 'db' in x.attrib.keys() and x.attrib['db'] == 'SRA':
             sra = x.text
     if sra is None:
-        nosra += 1
         continue # skip samples without an SRA sample
     #  NOTE: we used to check for BioProject ID here,
     #  but for some reason half the samples don't list a bioproject
     # even if they have one.
     
     # go through all the attributes and tally them
-    sampleenv = None
-    samplehost = None
-    sampleiso = None
+    filterdata = {}
+    all_tags = {}
     for tag in sample.iter('Attribute'):
         text = tag.text.lower()
-        if 'attribute_name' in tag.attrib.keys():
-            tags[tag.attrib['attribute_name']] += 1
-            if tag.attrib['attribute_name'] == 'isolation_source':
-                #isolation_source[text] += 1
-                sampleiso = text
-            if tag.attrib['attribute_name'] == 'env_material':
-                #env_material[text] += 1
-                sampleenv = text
-            if tag.attrib['attribute_name'] == 'host':
-                host[text] += 1
-                samplehost = text
-    # load up the manually curated list of acceptable values for "host":
-    host_tokeep = []
-    with open('tokeep_host.txt','r') as f:
-        for line in f:
-            host_tokeep.append(line[:-1]) # chop off newline character
+        if 'harmonized_name' in tag.attrib.keys():
+            if tag.attrib['harmonized_name'] in (source_tags + host_tags):
+                filterdata[tag.attrib['harmonized_name']] = text
+            else:
+                all_tags[tag.attrib['harmonized_name']] = text
+        elif 'attribute_name' in tag.attrib.keys():
+            all_tags[tag.attrib['attribute_name']] = text
+    # Then wade through the tags we found:
+    samplehost = None
+    samplesource = None
+    for key in host_tags:
+        if filterdata.get(key) is not None:
+            used_host[key] += 1
+            samplesource = filterdata[key]
+            break
+    
+    for key in source_tags:
+        if filterdata.get(key) is not None:
+            used_source[key] += 1
+            samplesource = filterdata[key]
+            break
+    
+    # TODO: write sample into table
 
-    if samplehost in host_tokeep:
-        if sampleiso is not None:
-            source[sampleiso] += 1
-        elif sampleenv is not None:
-            source[sampleenv] += 1
-#print('\n\n\n\n\n\n\n\n\n\n\n\n\n---!!------------HOST:\n')
-#print(host)
+    # TODO: add all the random tags to the tag table
 
-#print('\n\n\n\n\n\n\n\n\n\n\n\n\n----!!-----------SOURCE:\n')
-#print(source)
-print(f'{len(biosamples)} total samples ({noproject} without a project, {nosra} without SRA)')
+print('\n\n\n\n\n\n\n\n\n\n\n\n\n---!!------------HOST:\n')
+print(host)
+
+print('\n\n\n\n\n\n\n\n\n\n\n\n\n----!!-----------HOST KEY:\n')
+print(used_host)
+
+print('\n----!!-----------SOURCE KEY:\n')
+print(used_source)
+
+print(f'{len(biosamples)} total samples')
