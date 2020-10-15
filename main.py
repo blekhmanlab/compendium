@@ -6,10 +6,11 @@ from collections import defaultdict
 import sys # for the command-line params
 import xml.etree.ElementTree as ET
 
-#import db
+import db
 
-#connection = db.Connection()
-
+connection = db.Connection()
+connection.setup_tables()
+exit(0)
 # for counting entries in each field:
 source = defaultdict(int)
 host = defaultdict(int)
@@ -21,6 +22,19 @@ source_tags = [
         'host_body_product','body_product','host_body_habitat',
         'sample_type','isolation_source','env_medium'
     ]
+# 'host_body_product': 45214
+# 'body_product': 25077
+# 'host_body_habitat': 1436
+# 'sample_type': 21904
+# 'isolation_source': 130465
+# 'env_medium': 129850
+
+# load up the manually curated list of acceptable values for "host":
+host_tokeep = []
+with open('tokeep_host.txt','r') as f:
+    for line in f:
+        host_tokeep.append(line[:-1]) # chop off newline character
+
 host_tags = ['host_taxid','host']
 # load the XML file
 tree = ET.parse(sys.argv[1])
@@ -58,24 +72,30 @@ for sample in biosamples:
     for key in host_tags:
         if filterdata.get(key) is not None:
             used_host[key] += 1
-            samplesource = filterdata[key]
+            samplehost = filterdata[key]
             break
-    
+
+    if samplehost is None: continue
+
+    host[samplehost] += 1
+    # iterate through the potential values for "source" and get the first
+    # one that has a value
     for key in source_tags:
         if filterdata.get(key) is not None:
             used_source[key] += 1
             samplesource = filterdata[key]
             break
     
+    if samplehost in host_tokeep and samplesource is not None:
+        source[samplesource] += 1
+    
+    
     # TODO: write sample into table
 
     # TODO: add all the random tags to the tag table
 
-print('\n\n\n\n\n\n\n\n\n\n\n\n\n---!!------------HOST:\n')
-print(host)
-
-print('\n\n\n\n\n\n\n\n\n\n\n\n\n----!!-----------HOST KEY:\n')
-print(used_host)
+print('\n\n\n\n\n\n\n\n\n\n\n\n\n---!!------------SOURCE:\n')
+print(source)
 
 print('\n----!!-----------SOURCE KEY:\n')
 print(used_source)
