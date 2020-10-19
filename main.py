@@ -108,41 +108,120 @@ def load_xml(xmlfile):
 
     print(f'{len(biosamples)} total samples')
 
-def get_entrez(count):
+def get_entrez(count, per_query=10):
     """
     Queries the NCBI eUtils API to turn sample IDs ("SRS" codes)
     into Entrez ID numbers, which can be used for other searches later.
     
     Inputs:
-        - count: int. The upper limit for how many entries to search.
+        - count: int. The upper limit for how many entries to search in total.
+        - per_query: int. The number of entries to request in each web request
     """
+    # todo = connection.read("""SELECT s.srs FROM samples s
+    # INNER JOIN acceptable_hosts ah ON ah.host=s.host
+    # INNER JOIN acceptable_sources asa ON asa.source=s.source
+    # WHERE ah.keep AND asa.keep
+    #     AND srr IS NULL
+    # LIMIT %s""", (count,))
     todo = connection.read("""SELECT s.srs FROM samples s
-    INNER JOIN acceptable_hosts ah ON ah.host=s.host
-    INNER JOIN acceptable_sources asa ON asa.source=s.source
-    WHERE ah.keep AND asa.keep
-        AND entrez_id IS NULL
-    LIMIT %s""", (count,))
+        TABLESAMPLE BERNOULLI(1)
+        INNER JOIN acceptable_hosts ah ON ah.host=s.host
+        INNER JOIN acceptable_sources asa ON asa.source=s.source
+        WHERE ah.keep AND asa.keep
+            AND srr IS NULL
+        LIMIT %s""", (count,))
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
-    per_query = 5 # how many to send at one time
     cursor = 0
+
     while cursor < len(todo):
-        url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term='
+        url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&usehistory=y&term='
         for x in range(0, per_query):
             url += f'{todo[cursor]}[accn] or '
             cursor += 1
             if cursor == len(todo): break # in case the total isn't a multiple of "per_query"
         url = url[:-4] # trim off trailing " or "
         print(url)
+
         r = requests.get(url)
         tree = ET.fromstring(r.text)
         found = []
-        for x in tree.iter('Id'):
-            print(f'   ID: {x.text}')
-            found.append(x.text)
-        if len(found) != per_query:
-            print(f'   WAIT! Asked for {per_query} IDs but got {len(found)}\n\n')
+        webenv = tree.find('WebEnv')
+        print(webenv.text)
+        time.sleep(1)
+        url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&query_key=1&WebEnv={webenv.text}'
+        r = requests.get(url)
+        tree = ET.fromstring(r.text)
+        record_data(tree)
         time.sleep(3)
+def record_data(data):
+    """Parses a response from the efetch endpoint that has info about
+    all the samples in the query."""
+
+    for package in data.findall('EXPERIMENT_PACKAGE'):
+        sample = None
+        tosave = {}
+
+        # for child in package:
+        #     print(f'  {child.tag}: |{child.attrib}|')
+        #print('\n\n')
+        for x in package.iter('SAMPLE'):
+            if 'accession' in x.attrib.keys():
+                print(f"SAMPLE {x.attrib['accession']}")
+                sample = x.attrib['accession']
+        for x in package.iter('RUN'):
+            if 'accession' in x.attrib.keys():
+                print(f"  RUN IS {x.attrib['accession']}")
+                tosave['run'] = x.attrib['accession']
+        for x in package.iter('EXTERNAL_ID'):
+            if 'namespace' in x.attrib.keys():
+                if x.attrib['namespace'] == 'BioProject':
+                    print(f"  PROJECT IS {x.text}")
+                    tosave['project'] = x.text
+                    break
+        for x in package.iter('LIBRARY_STRATEGY'):
+            print(f"  STRATEGY IS {x.text}")
+            tosave['library_strategy'] = x.text
+        for x in package.iter('LIBRARY_SOURCE'):
+            print(f"  SOURCE IS {x.text}")
+            tosave['library_source'] = x.text
         
+        with connection.db.cursor() as cursor:
+            # If there is no SRA run identified, SKIP this entry.
+            # Sometimes a sample will have multiple entries, one with
+            # a run (and lots of metadata) and another without any info
+            # but DIFFERENT metadata. We only want ones that have a run.
+            if tosave.get('run') is not None:
+                cursor.execute("""
+                    UPDATE samples
+                    SET srr=%s
+                    WHERE srs=%s
+                """, (tosave.get('run'), sample))
+            else:
+                print("\n\n\n!!! NO RUN !!!\n\n\n")
+                continue
+            if tosave.get('project') is not None:
+                cursor.execute("""
+                    UPDATE samples
+                    SET project=%s
+                    WHERE srs=%s
+                """, (tosave.get('project'), sample))
+            if tosave.get('library_strategy') is not None:
+                cursor.execute("""
+                    UPDATE samples
+                    SET library_strategy=%s
+                    WHERE srs=%s
+                """, (tosave.get('library_strategy'), sample))
+            if tosave.get('library_source') is not None:
+                cursor.execute("""
+                    UPDATE samples
+                    SET library_source=%s
+                    WHERE srs=%s
+                """, (tosave.get('library_source'), sample))
+
 if __name__ == "__main__":
     #load_xml(sys.argv[1])
-    get_entrez(50)
+    get_entrez(500, 20)
+    
+    # resp = ET.parse('efetch_longer.xml')
+    # x = resp.getroot()
+    # pull_data(x)
