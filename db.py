@@ -54,6 +54,16 @@ class Connection(object):
     
     def setup_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS samples (srs text PRIMARY KEY, host text, source text, entrez_id text, srr text);")
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tags (
+                tagid int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                srs text NOT NULL, tag text NOT NULL, value text,
+                CONSTRAINT fk_tag_srs FOREIGN KEY(srs)
+                    REFERENCES samples(srs)
+            );
+        """)
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_hosts (host text PRIMARY KEY, keep bool NOT NULL);")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_sources (source text PRIMARY KEY, keep bool NOT NULL);")
 
     def read(self, query, params=None):
         """Helper function that converts results returned stored in a
