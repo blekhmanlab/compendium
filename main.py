@@ -4,7 +4,10 @@
 
 from collections import defaultdict
 import sys # for the command-line params
+import time
 import xml.etree.ElementTree as ET
+
+import requests
 
 import db
 
@@ -105,15 +108,41 @@ def load_xml(xmlfile):
 
     print(f'{len(biosamples)} total samples')
 
-    def get_entrez(count):
-        """
-        Queries the NCBI eUtils API to turn sample IDs ("SRS" codes)
-        into Entrez ID numbers, which can be used for other searches later.
-        
-        Inputs:
-            - count: int. The upper limit for how many entries to search.
-        """
-        return 0
+def get_entrez(count):
+    """
+    Queries the NCBI eUtils API to turn sample IDs ("SRS" codes)
+    into Entrez ID numbers, which can be used for other searches later.
+    
+    Inputs:
+        - count: int. The upper limit for how many entries to search.
+    """
+    todo = connection.read("""SELECT s.srs FROM samples s
+    INNER JOIN acceptable_hosts ah ON ah.host=s.host
+    INNER JOIN acceptable_sources asa ON asa.source=s.source
+    WHERE ah.keep AND asa.keep
+        AND entrez_id IS NULL
+    LIMIT %s""", (count,))
+    todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
+    per_query = 5 # how many to send at one time
+    cursor = 0
+    while cursor < len(todo):
+        url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term='
+        for x in range(0, per_query):
+            url += f'{todo[cursor]}[accn] or '
+            cursor += 1
+            if cursor == len(todo): break # in case the total isn't a multiple of "per_query"
+        url = url[:-4] # trim off trailing " or "
+        print(url)
+        r = requests.get(url)
+        tree = ET.fromstring(r.text)
+        found = []
+        for x in tree.iter('Id'):
+            print(f'   ID: {x.text}')
+            found.append(x.text)
+        if len(found) != per_query:
+            print(f'   WAIT! Asked for {per_query} IDs but got {len(found)}\n\n')
+        time.sleep(3)
         
 if __name__ == "__main__":
-    load_xml(sys.argv[1])
+    #load_xml(sys.argv[1])
+    get_entrez(50)
