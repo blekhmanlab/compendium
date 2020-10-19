@@ -9,95 +9,111 @@ import xml.etree.ElementTree as ET
 import db
 
 connection = db.Connection()
-connection.setup_tables()
-exit(0)
-# for counting entries in each field:
-source = defaultdict(int)
-host = defaultdict(int)
-# for tracking which tags were used for the "host" and "source" fields:
-used_host = defaultdict(int)
-used_source = defaultdict(int)
 
-source_tags = [
-        'host_body_product','body_product','host_body_habitat',
-        'sample_type','isolation_source','env_medium'
-    ]
-# 'host_body_product': 45214
-# 'body_product': 25077
-# 'host_body_habitat': 1436
-# 'sample_type': 21904
-# 'isolation_source': 130465
-# 'env_medium': 129850
+def load_xml(xmlfile):
+    """
+    Loads the "full text XML" exported from a search of BioSamples and adds
+    them to the database.
 
-# load up the manually curated list of acceptable values for "host":
-host_tokeep = []
-with open('tokeep_host.txt','r') as f:
-    for line in f:
-        host_tokeep.append(line[:-1]) # chop off newline character
+    Inputs:
+        - xmlfile: String. Path to the file to be read.
+    """
+    # for counting entries in each field:
+    source = defaultdict(int)
+    host = defaultdict(int)
+    # for tracking which tags were used for the "host" and "source" fields:
+    used_host = defaultdict(int)
+    used_source = defaultdict(int)
 
-host_tags = ['host_taxid','host']
-# load the XML file
-tree = ET.parse(sys.argv[1])
-biosamples = tree.getroot()
+    source_tags = [
+            'host_body_product','body_product','host_body_habitat',
+            'sample_type','isolation_source','env_medium'
+        ]
 
-# iterate through each entry in the file
-for sample in biosamples:
-    # find SRA ID of sample
-    # example: <BioSample> <Ids> <Id db="SRA">SRS5588834</Id> </Ids> </BioSample>
-    sra = None
-    for x in sample.iter('Id'):
-        if 'db' in x.attrib.keys() and x.attrib['db'] == 'SRA':
-            sra = x.text
-    if sra is None:
-        continue # skip samples without an SRA sample
-    #  NOTE: we used to check for BioProject ID here,
-    #  but for some reason half the samples don't list a bioproject
-    # even if they have one.
-    
-    # go through all the attributes and tally them
-    filterdata = {}
-    all_tags = {}
-    for tag in sample.iter('Attribute'):
-        text = tag.text.lower()
-        if 'harmonized_name' in tag.attrib.keys():
-            if tag.attrib['harmonized_name'] in (source_tags + host_tags):
-                filterdata[tag.attrib['harmonized_name']] = text
-            else:
-                all_tags[tag.attrib['harmonized_name']] = text
-        elif 'attribute_name' in tag.attrib.keys():
-            all_tags[tag.attrib['attribute_name']] = text
-    # Then wade through the tags we found:
-    samplehost = None
-    samplesource = None
-    for key in host_tags:
-        if filterdata.get(key) is not None:
-            used_host[key] += 1
-            samplehost = filterdata[key]
-            break
+    host_tags = ['host_taxid','host']
+    # load the XML file
+    print('loading xml...')
+    tree = ET.parse(xmlfile)
+    biosamples = tree.getroot()
+    print('processing samples!')
+    # iterate through each entry in the file
+    done = -1
+    for sample in biosamples:
+        done += 1
+        if done % 10000 == 0:
+            print(f'   {done} out of {len(biosamples)} complete.')
+        # find SRA ID of sample
+        # example: <BioSample> <Ids> <Id db="SRA">SRS5588834</Id> </Ids> </BioSample>
+        sra = None
+        for x in sample.iter('Id'):
+            if 'db' in x.attrib.keys() and x.attrib['db'] == 'SRA':
+                sra = x.text
+        if sra is None:
+            continue # skip samples without an SRA sample
+        #  NOTE: we used to check for BioProject ID here,
+        #  but for some reason half the samples don't list a bioproject
+        # even if they have one.
+        
+        # go through all the attributes and tally them
+        filterdata = {}
+        all_tags = {}
+        for tag in sample.iter('Attribute'):
+            text = tag.text.lower()
+            if 'harmonized_name' in tag.attrib.keys():
+                if tag.attrib['harmonized_name'] in (source_tags + host_tags):
+                    filterdata[tag.attrib['harmonized_name']] = text
+                else:
+                    all_tags[tag.attrib['harmonized_name']] = text
+            elif 'attribute_name' in tag.attrib.keys():
+                all_tags[tag.attrib['attribute_name']] = text
+        # Then wade through the tags we found:
+        samplehost = None
+        samplesource = None
+        for key in host_tags:
+            if filterdata.get(key) is not None:
+                used_host[key] += 1
+                samplehost = filterdata[key]
+                break
+        if samplehost is None: continue
 
-    if samplehost is None: continue
-
-    host[samplehost] += 1
-    # iterate through the potential values for "source" and get the first
-    # one that has a value
-    for key in source_tags:
-        if filterdata.get(key) is not None:
-            used_source[key] += 1
-            samplesource = filterdata[key]
-            break
-    
-    if samplehost in host_tokeep and samplesource is not None:
+        host[samplehost] += 1
+        # iterate through the potential values for "source" and get the first
+        # one that has a value
+        for key in source_tags:
+            if filterdata.get(key) is not None:
+                used_source[key] += 1
+                samplesource = filterdata[key]
+                break
+        
+        if samplesource is None: continue
         source[samplesource] += 1
-    
-    
-    # TODO: write sample into table
+        
+        # write sample into table
+        with connection.db.cursor() as cursor:
+            cursor.execute('INSERT INTO samples (srs, host, source) VALUES (%s, %s, %s);', (sra, samplehost, samplesource))
 
-    # TODO: add all the random tags to the tag table
 
-print('\n\n\n\n\n\n\n\n\n\n\n\n\n---!!------------SOURCE:\n')
-print(source)
+        # add all the random tags to the tag table
+        with connection.db.cursor() as cursor:
+            sql = 'INSERT INTO tags (srs, tag, value) VALUES (%s, %s, %s);'
+            params = [(sra, tag, value) for (tag, value) in filterdata.items()]
+            cursor.executemany(sql, params)
+        with connection.db.cursor() as cursor:
+            sql = 'INSERT INTO tags (srs, tag, value) VALUES (%s, %s, %s);'
+            params = [(sra, tag, value) for (tag, value) in all_tags.items()]
+            cursor.executemany(sql, params)
 
-print('\n----!!-----------SOURCE KEY:\n')
-print(used_source)
+    print(f'{len(biosamples)} total samples')
 
-print(f'{len(biosamples)} total samples')
+    def get_entrez(count):
+        """
+        Queries the NCBI eUtils API to turn sample IDs ("SRS" codes)
+        into Entrez ID numbers, which can be used for other searches later.
+        
+        Inputs:
+            - count: int. The upper limit for how many entries to search.
+        """
+        return 0
+        
+if __name__ == "__main__":
+    load_xml(sys.argv[1])
