@@ -146,6 +146,13 @@ def find_runs(count, per_query=10):
         tree = ET.fromstring(r.text)
         found = []
         webenv = tree.find('WebEnv')
+        if webenv is None:
+            print('\n---------\n')
+            print(r.text)
+            print("WARNING: Got response without a 'webenv' field. Moving on.")
+            print('\n---\n')
+            time.sleep(10)
+            continue
         time.sleep(1)
         url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?tool={config.tool}&email={config.email}&db=sra&query_key=1&WebEnv={webenv.text}'
         if len(url) >1950:
@@ -154,7 +161,12 @@ def find_runs(count, per_query=10):
             exit(1)
 
         r = requests.get(url)
-        tree = ET.fromstring(r.text)
+        try:
+            tree = ET.fromstring(r.text)
+        except xml.etree.ElementTree.ParseError:
+            print("WARNING: Misformed response from call to eFetch. Skipping.")
+            time.sleep(10)
+            continue
         record_data(tree)
         time.sleep(1)
 
