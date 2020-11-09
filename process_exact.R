@@ -3,7 +3,7 @@
 library(dada2)
 packageVersion("dada2")
 
-setwd('/data/trimmed')
+setwd('/mnt/trimmed')
 
 log <- function(message) print(paste(date(), message))
 
@@ -12,9 +12,9 @@ log <- function(message) print(paste(date(), message))
 samples <- scan("../samples.txt", what="character")
 
 # one holding the file names of all the forward reads
-forward_reads <- paste0(samples, "_1.fastq")
+forward_reads <- paste0(samples, ".R1.fq")
 # and one with the reverse
-reverse_reads <- paste0(samples, "_2.fastq")
+reverse_reads <- paste0(samples, ".R2.fq")
 # and variables holding file names for the forward and reverse
 # filtered reads we're going to generate below
 filtered_forward_reads <- paste0("../intermediate/", samples, "_R1_filtered.fastq.gz")
@@ -25,30 +25,13 @@ filtered_reverse_reads <- paste0("../intermediate/", samples, "_R2_filtered.fast
 # Quality filtering
 #########################
 
-# Filter and trim for quality
-log('Filtering and trimming...')
+# Filter for quality. We do this even if shi7 is used first because
+# it does a few DADA2-specific things (throwing out 'N' bases, for example)
+# that become important later.
+log('Filtering...')
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
     reverse_reads, filtered_reverse_reads,
-    maxEE=4, trimLeft=25, trimRight=40,
-    rm.phix=TRUE, minLen=c(100,75), truncLen=c(200,125))
-
-log('Plotting quality samples...')
-
-pdf('../forward_quality.pdf')
-plotQualityProfile(forward_reads[1:6])
-dev.off()
-
-pdf('../reverse_quality.pdf')
-plotQualityProfile(reverse_reads[1:6])
-dev.off()
-
-pdf('../filtered_forward_quality.pdf')
-plotQualityProfile(filtered_forward_reads[1:6])
-dev.off()
-
-pdf('../filtered_reverse_quality.pdf')
-plotQualityProfile(filtered_reverse_reads[1:6])
-dev.off()
+    rm.phix=TRUE, multithread=8)
 
 #########################
 # Building error models
@@ -86,7 +69,7 @@ dada_reverse <- dada(derep_reverse, err=err_reverse_reads, multithread=TRUE)
 
 log('Merging reads...')
 merged_amplicons <- mergePairs(dada_forward, derep_forward, dada_reverse,
-    derep_reverse, trimOverhang=TRUE, minOverlap=15)
+    derep_reverse, trimOverhang=TRUE, minOverlap=235, maxOverlap=255)
 
 seqtab <- makeSequenceTable(merged_amplicons)
 # check for chimeras
@@ -110,7 +93,7 @@ log('Writing summary output...')
 write.table(summary_tab, "../summary.tsv",
             sep="\t", quote=F, col.names=NA)
 log('Writing ESV table...')
-write.table(seqtab.nochim, "../ESV.tsv",
+write.table(seqtab.nochim, "../ASV.tsv",
             sep="\t", quote=F, col.names=NA)
-saveRDS(seqtab.nochim, '../esv.rds')
+saveRDS(seqtab.nochim, '../asv.rds')
 log('DONE!!!')
