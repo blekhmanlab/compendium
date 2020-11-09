@@ -53,7 +53,10 @@ class Connection(object):
             self._attempt_connect(attempts)
     
     def setup_tables(self):
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS samples (srs text PRIMARY KEY, host text, source text, srr text, project text, library_strategy text, library_source text);")
+        self.cursor.execute("""CREATE TABLE IF NOT EXISTS samples (
+            srs text PRIMARY KEY, host text, source text, srr text,
+            project text, library_strategy text, library_source text,
+            exported bool);""")
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS tags (
                 tagid int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

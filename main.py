@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os
 import sys # for the command-line params
 import time
 import xml.etree.ElementTree as ET
@@ -227,8 +228,81 @@ def record_data(data):
                     WHERE srs=%s
                 """, (tosave.get('library_source'), sample))
 
+def write_lists(min_samples=10):
+    """
+    Fetches a list of SRA projects from the local database and generates a list
+    of samples for each project.
+    
+    Inputs:
+        - min_samples: int. The minimum number of samples that a project needs to
+            have to get a list generated.
+    """
+
+    todo = connection.read("""
+        SELECT samplecount.project
+        FROM (
+            SELECT project, COUNT(s.srs)
+            FROM SAMPLES s
+            INNER JOIN acceptable_hosts ah ON ah.host=s.host
+            INNER JOIN acceptable_sources asa ON asa.source=s.source
+            WHERE ah.keep AND asa.keep AND s.library_strategy='AMPLICON'
+            AND srr IS NOT NULL AND project IS NOT NULL
+            AND (library_source='METAGENOMIC' OR library_source='GENOMIC')
+            GROUP BY 1
+            ORDER BY 2 ASC
+        ) AS samplecount
+        WHERE samplecount.count >= %s""", (min_samples,))
+    todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
+
+    project_samples = []
+
+    for project in todo:
+        samples = connection.read("""
+            SELECT s.srr
+            FROM SAMPLES s
+            INNER JOIN acceptable_hosts ah ON ah.host=s.host
+            INNER JOIN acceptable_sources asa ON asa.source=s.source
+            WHERE ah.keep AND asa.keep AND s.library_strategy='AMPLICON'
+            AND srr IS NOT NULL AND project=%s
+            AND (library_source='METAGENOMIC'
+                OR library_source='GENOMIC')""", (project,))
+        samples = [x[0] for x in samples]
+        project_samples.append((project, len(samples)))
+
+        if os.path.exists(f'accession_lists/{project}/SraAccList.txt'):
+            print(f'Project already recorded: {project}')
+            continue
+
+        os.mkdir(f'accession_lists/{project}')
+        
+        with open(f'accession_lists/{project}/SraAccList.txt','w') as f:
+            for sample in samples:
+                f.write(f'{sample}\n')
+        
+        with connection.db.cursor() as cursor:
+            sql = """
+            UPDATE samples SET exported=true
+            WHERE project=%s AND
+            srr IN (
+                SELECT s.srr
+                FROM SAMPLES s
+                INNER JOIN acceptable_hosts ah ON ah.host=s.host
+                INNER JOIN acceptable_sources asa ON asa.source=s.source
+                WHERE ah.keep AND asa.keep AND s.library_strategy='AMPLICON'
+                AND srr IS NOT NULL AND project=%s
+                AND (library_source='METAGENOMIC'
+                    OR library_source='GENOMIC')
+            )
+            """
+            cursor.execute(sql, (project, project))
+    
+    with open(f'samples_per_project.csv','w') as f:
+        for x in project_samples:
+            f.write(f'{x[0]}, {x[1]}\n')
+
 if __name__ == "__main__":
     # only command-line param is how many to do in this session
-    todo = 200 if len(sys.argv) < 2 else sys.argv[1]
+    #todo = 200 if len(sys.argv) < 2 else sys.argv[1]
+    #find_runs(todo, 50)
 
-    find_runs(todo, 50)
+    write_lists()
