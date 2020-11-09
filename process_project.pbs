@@ -1,0 +1,11 @@
+#!/bin/bash -l
+#PBS -l walltime=16:00:00,nodes=1:ppn=8,mem=16gb 
+#PBS -q blekhman
+#PBS -m abe 
+#PBS -M rabdill@umn.edu
+#PBS -N ${PROJECT}
+
+cd /scratch.global/rabdill/bulk/${PROJECT}
+cp ~/shithouse/scripts/process_exact.R .
+module load singularity
+singularity exec --bind "$pwd":/data docker://blekhmanlab/dada2 Rscript /data/process_exact.R
