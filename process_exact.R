@@ -17,8 +17,8 @@ forward_reads <- paste0(samples, ".R1.fq")
 reverse_reads <- paste0(samples, ".R2.fq")
 # and variables holding file names for the forward and reverse
 # filtered reads we're going to generate below
-filtered_forward_reads <- paste0("../intermediate/", samples, "_R1_filtered.fastq.gz")
-filtered_reverse_reads <- paste0("../intermediate/", samples, "_R2_filtered.fastq.gz")
+filtered_forward_reads <- paste0("../intermediate/", samples, ".R1.filtered.fastq.gz")
+filtered_reverse_reads <- paste0("../intermediate/", samples, ".R2.filtered.fastq.gz")
 
 
 #########################
@@ -31,7 +31,10 @@ filtered_reverse_reads <- paste0("../intermediate/", samples, "_R2_filtered.fast
 log('Filtering...')
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
     reverse_reads, filtered_reverse_reads,
-    rm.phix=TRUE, multithread=8)
+    truncQ=0, rm.phix=TRUE, multithread=8)
+
+# saveRDS(filtered_out, '../temp/filtered_out.rds')
+# filtered_out <- readRDS('../temp/filtered_out.rds')
 
 #########################
 # Building error models
@@ -42,13 +45,18 @@ log('Building reverse error model...')
 err_reverse_reads <- learnErrors(filtered_reverse_reads, multithread=TRUE)
 
 log('Plotting error models...')
-pdf('../forward_error_model.pdf')
+pdf('../temp/forward_error_model.pdf')
 plotErrors(err_forward_reads, nominalQ=TRUE)
 dev.off()
 
-pdf('../reverse_error_model.pdf')
+pdf('../temp/reverse_error_model.pdf')
 plotErrors(err_reverse_reads, nominalQ=TRUE)
 dev.off()
+
+# saveRDS(err_forward_reads, '../temp/err_forward_reads.rds')
+# saveRDS(err_reverse_reads, '../temp/err_reverse_reads.rds')
+# err_forward_reads <- readRDS('../temp/err_forward_reads.rds')
+# err_reverse_reads <- readRDS('../temp/err_reverse_reads.rds')
 
 #########################
 # Dereplicate identical reads
@@ -59,6 +67,11 @@ names(derep_forward) <- samples # the sample names in these objects are initiall
 derep_reverse <- derepFastq(filtered_reverse_reads, verbose=TRUE)
 names(derep_reverse) <- samples
 
+# saveRDS(derep_forward, '../temp/derep_forward.rds')
+# saveRDS(derep_reverse, '../temp/derep_reverse.rds')
+# derep_forward <- readRDS('../temp/derep_reverse.rds')
+# derep_reverse <- readRDS('../temp/derep_reverse.rds')
+
 #########################
 # Generate count table
 #########################
@@ -67,12 +80,18 @@ dada_forward <- dada(derep_forward, err=err_forward_reads, multithread=TRUE)
 log('Processing reverse reads...')
 dada_reverse <- dada(derep_reverse, err=err_reverse_reads, multithread=TRUE)
 
+# saveRDS(dada_forward, '../temp/dada_forward.rds')
+# saveRDS(dada_reverse, '../temp/dada_reverse.rds')
+# dada_forward <- readRDS('../temp/dada_forward.rds')
+# dada_reverse <- readRDS('../temp/dada_reverse.rds')
+
 log('Merging reads...')
 merged_amplicons <- mergePairs(dada_forward, derep_forward, dada_reverse,
-    derep_reverse, trimOverhang=TRUE, minOverlap=235, maxOverlap=255)
+    derep_reverse, trimOverhang=TRUE, minOverlap=100)
 
 seqtab <- makeSequenceTable(merged_amplicons)
 # check for chimeras
+log('Removing bimeras...')
 seqtab.nochim <- removeBimeraDenovo(seqtab, verbose=T)
 
 #########################
@@ -92,7 +111,7 @@ summary_tab <- data.frame(row.names=samples, dada2_input=filtered_out[,1],
 log('Writing summary output...')
 write.table(summary_tab, "../summary.tsv",
             sep="\t", quote=F, col.names=NA)
-log('Writing ESV table...')
+log('Writing ASV table...')
 write.table(seqtab.nochim, "../ASV.tsv",
             sep="\t", quote=F, col.names=NA)
 saveRDS(seqtab.nochim, '../asv.rds')

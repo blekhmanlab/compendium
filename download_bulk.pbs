@@ -1,14 +1,17 @@
-#!/bin/sh -e
+#!/bin/bash -e
+#PBS -l walltime=8:00:00,nodes=1:ppn=1,mem=2gb 
+#PBS -q blekhman
+#PBS -m abe 
+#PBS -M rabdill@umn.edu
+#PBS -N ${PROJECT}download
 
 # This script expects a directory matching the project name
-# to be present at /scratch.global/rabdill/bulk/
-# with a file in it called SraAccList.txt listing all the samples
+# to be present at ~/shithouse/accession_lists/
+# with a file in it called "SraAccList.txt" listing all the samples
 # to be downloaded from SRA.
-
-mv ~/shithouse/accession_lists/${1} /scratch.global/rabdill/bulk/
-cd /scratch.global/rabdill/bulk/${1}
+mv ~/shithouse/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/
+cd /scratch.global/rabdill/bulk/${PROJECT}
 mkdir fastq
-mkdir intermediate
 
 #module load aspera
 module load sratoolkit # currently 2.8.2
@@ -25,7 +28,7 @@ prefetch --option-file SraAccList.txt
 for sample in $(cat SraAccList.txt)
 do
     echo "On sample: $sample"
-    fastq-dump -I --split-files $sample -O /scratch.global/rabdill/bulk/${1}/fastq
+    fastq-dump -I --split-files $sample -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
 done
 
 # create a "samples" file listing ONLY the samples that were successfully processed

@@ -5,7 +5,24 @@
 #PBS -M rabdill@umn.edu
 #PBS -N ${PROJECT}
 
-cd /scratch.global/rabdill/bulk/${PROJECT}
-cp ~/shithouse/scripts/process_exact.R .
+mkdir /scratch.global/rabdill/bulk/${PROJECT}/trimmed # after shi7
+mkdir /scratch.global/rabdill/bulk/${PROJECT}/intermediate # after dada2
+mkdir /scratch.global/rabdill/bulk/${PROJECT}/temp
+
+# TRIMMING with shi7
+# (all this weird formatting is because we have to run shi7 SPECIFICALLY
+#  with python 2, rather than the python 3 that the system defaults to, 
+#  because of an outstanding bug)
+cd ~/shithouse/shi7_0.9.9/
+python2 shi7_learning.py -i /scratch.global/rabdill/bulk/${PROJECT}/fastq -o /scratch.global/rabdill/bulk/${PROJECT}/learnt
+
+a=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
+
+$(echo python2 $a --flash False --convert_fasta False --combine_fasta False --output /scratch.global/rabdill/bulk/${PROJECT}/trimmed)
+
+# PROCESSING with DADA2
 module load singularity
-singularity exec --bind "$pwd":/data docker://blekhmanlab/dada2 Rscript /data/process_exact.R
+singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/scripts/process_exact.R
+
+cp /scratch.global/rabdill/bulk/${PROJECT}/summary.tsv ~/shithouse/results/summaries/${PROJECT}_summary.tsv
+cp /scratch.global/rabdill/bulk/${PROJECT}/ASV.tsv ~/shithouse/results/${PROJECT}.tsv
