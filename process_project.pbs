@@ -14,6 +14,7 @@ mkdir /scratch.global/rabdill/bulk/${PROJECT}/temp
 #  with python 2, rather than the python 3 that the system defaults to, 
 #  because of an outstanding bug)
 cd ~/shithouse/shi7_0.9.9/
+echo "Learning shi7 parameters..."
 python2 shi7_learning.py -i /scratch.global/rabdill/bulk/${PROJECT}/fastq -o /scratch.global/rabdill/bulk/${PROJECT}/learnt
 
 a=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
@@ -21,8 +22,9 @@ a=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
 $(echo python2 $a --flash False --convert_fasta False --combine_fasta False --output /scratch.global/rabdill/bulk/${PROJECT}/trimmed)
 
 # PROCESSING with DADA2
+echo "RUNNING DADA2"
 module load singularity
-singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/scripts/process_exact.R
+singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_exact.R
 
 cp /scratch.global/rabdill/bulk/${PROJECT}/summary.tsv ~/shithouse/results/summaries/${PROJECT}_summary.tsv
 cp /scratch.global/rabdill/bulk/${PROJECT}/ASV.tsv ~/shithouse/results/${PROJECT}.tsv
