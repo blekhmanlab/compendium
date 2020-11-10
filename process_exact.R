@@ -156,10 +156,38 @@ summary_tab <- data.frame(row.names=samples, dada2_input=filtered_out[,1],
 
 # OUTPUT
 log('Writing summary output...')
-write.table(summary_tab, "../summary.tsv",
+write.table(summary_tab, "../results/summary.tsv",
             sep="\t", quote=F, col.names=NA)
 log('Writing ASV table...')
-write.table(seqtab.nochim, "../ASV.tsv",
+write.table(seqtab.nochim, "../results/ASV.tsv",
             sep="\t", quote=F, col.names=NA)
 saveRDS(seqtab.nochim, '../asv.rds')
+log('ASVs recorded.')
+
+log('Assigning taxonomy...')
+taxa <- assignTaxonomy(seqtab.nochim, "~/silva_nr_v138_train_set.fa.gz", multithread=8, tryRC=T)
+
+asv_seqs <- colnames(seqtab.nochim)
+asv_headers <- vector(dim(seqtab.nochim)[2], mode="character")
+for (i in 1:dim(seqtab.nochim)[2]) {
+  asv_headers[i] <- paste(">ASV", i, sep="_")
+}
+# extract fasta:
+asv_fasta <- c(rbind(asv_headers, asv_seqs))
+# count table:
+asv_tab <- t(seqtab.nochim)
+row.names(asv_tab) <- sub(">", "", asv_headers)
+# tax table:
+asv_tax <- taxa
+row.names(asv_tax) <- sub(">", "", asv_headers)
+
+
+## output
+log('Writing output files...')
+write(asv_fasta, "../results/ASVs.fa")
+write.table(asv_tab, "../results/ASVs_counts.tsv",
+            sep="\t", quote=F, col.names=NA)
+write.table(asv_tax, "../results/ASVs_taxonomy.tsv",
+            sep="\t", quote=F, col.names=NA)
+
 log('DONE!!!')
