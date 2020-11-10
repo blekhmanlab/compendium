@@ -21,10 +21,4 @@ a=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
 
 $(echo python2 $a --flash False --convert_fasta False --combine_fasta False --output /scratch.global/rabdill/bulk/${PROJECT}/trimmed)
 
-# PROCESSING with DADA2
-echo "RUNNING DADA2"
-module load singularity
-singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_exact.R
-
-cp /scratch.global/rabdill/bulk/${PROJECT}/summary.tsv ~/shithouse/results/summaries/${PROJECT}_summary.tsv
-cp /scratch.global/rabdill/bulk/${PROJECT}/ASV.tsv ~/shithouse/results/${PROJECT}.tsv
+echo "DONE"
