@@ -10,5 +10,4 @@ echo "RUNNING DADA2"
 module load singularity
 singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_exact.R
 
-cp /scratch.global/rabdill/bulk/${PROJECT}/summary.tsv ~/shithouse/results/summaries/${PROJECT}_summary.tsv
-cp /scratch.global/rabdill/bulk/${PROJECT}/ASV.tsv ~/shithouse/results/${PROJECT}.tsv
+cp -R /scratch.global/rabdill/bulk/${PROJECT}/results ~/shithouse/results/${PROJECT}
