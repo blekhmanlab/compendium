@@ -6,8 +6,11 @@ cd ~/shithouse/logs
 # downloads fastq files:
 qsub ../code/download_bulk.pbs -v PROJECT=PRJNA493625
 
+# trim reads
+qsub ../code/run_shi7.pbs -v PROJECT=PRJNA493625
+
 # extract ASV table for study
-qsub ../code/process_project.pbs -v PROJECT=PRJNA493625
+qsub ../code/run_dada.pbs -v PROJECT=PRJNA493625
 
 # clean up the extra files
 bash ../code/cleanup_project.sh PRJNA493625

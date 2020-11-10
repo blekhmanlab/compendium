@@ -1,9 +1,9 @@
-#!/bin/bash -l
+#!/bin/bash -e
 #PBS -l walltime=16:00:00,nodes=1:ppn=8,mem=16gb 
 #PBS -q blekhman
 #PBS -m abe 
 #PBS -M rabdill@umn.edu
-#PBS -N ${PROJECT}
+#PBS -N ${PROJECT}trim
 
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/trimmed # after shi7
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/intermediate # after dada2
