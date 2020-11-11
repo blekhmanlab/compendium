@@ -12,5 +12,6 @@ rm -rf fastq
 rm -rf results
 cd ..
 tar -zcvf ${1}.tar.gz ${1}
-mv ${1}.tar.gz ~/shithouse/results/archived/
+mv ${1}.tar.gz ~/shithouse/archived/
 rm -rf ${1}
+echo "Done"
