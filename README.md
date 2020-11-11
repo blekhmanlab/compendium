@@ -4,13 +4,13 @@
 ```sh
 cd ~/shithouse/logs
 # downloads fastq files:
-qsub ../code/download_bulk.pbs -v PROJECT=PRJNA493625
+qsub ../code/download_bulk.pbs -v PROJECT=PRJNA666641
 
-# trim reads
-qsub ../code/run_shi7.pbs -v PROJECT=PRJNA493625
+# trim reads (the download script should submit this automatically now)
+#qsub ../code/run_shi7.pbs -v PROJECT=PRJNA493625
 
 # extract ASV table for study
-qsub ../code/run_dada.pbs -v PROJECT=PRJNA493625
+qsub ../code/run_dada.pbs -v PROJECT=PRJNA666641
 
 # clean up the extra files
 bash ../code/cleanup_project.sh PRJNA493625
