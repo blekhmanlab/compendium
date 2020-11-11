@@ -6,8 +6,20 @@
 #PBS -N ${PROJECT}dada
 
 # PROCESSING with DADA2
-echo "RUNNING DADA2"
-module load singularity
-singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_exact.R
 
+module load singularity
+
+nopair=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh | grep \\-SE | wc -l)
+
+if [ "$nopair" -eq 1 ]
+  then
+    echo "Running DADA2 in SINGLE-ENDED MODE"
+    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_forwards.R
+  else
+    echo "Running DADA2 in paired-end mode"
+    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_paired_end.R
+fi
+
+echo "Moving results"
 cp -R /scratch.global/rabdill/bulk/${PROJECT}/results ~/shithouse/results/${PROJECT}
+echo "DONE"
