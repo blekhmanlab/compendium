@@ -12,7 +12,7 @@ log <- function(message) print(paste(date(), message))
 samples <- scan("../samples.txt", what="character")
 
 # one holding the file names of all the forward reads
-forward_reads <- paste0(samples, ".R1.fq")
+forward_reads <- paste0(samples, ".1.fq")
 filtered_forward_reads <- paste0("../intermediate/", samples, ".R1.filtered.fastq.gz")
 
 
