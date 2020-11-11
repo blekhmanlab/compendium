@@ -9,6 +9,7 @@ rm -rf trimmed
 rm -rf intermediate
 rm -rf learnt
 rm -rf fastq
+rm -rf results
 cd ..
 tar -zcvf ${1}.tar.gz ${1}
 mv ${1}.tar.gz ~/shithouse/results/archived/
