@@ -34,4 +34,7 @@ done
 # create a "samples" file listing ONLY the samples that were successfully processed
 cd fastq
 ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
-echo "DONE"
+echo "DONE. Submitting trimming job."
+
+cd ~/shithouse/logs
+qsub ../code/run_shi7.pbs -v PROJECT=${PROJECT}
