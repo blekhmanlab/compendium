@@ -5,6 +5,8 @@
 #PBS -M rabdill@umn.edu
 #PBS -N ${PROJECT}trim
 
+echo "${PROJECT},trim,start" >> ~/shithouse/activity.csv
+
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/results
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/trimmed # for shi7
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/intermediate # for dada2
@@ -30,4 +32,7 @@ a=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
 
 $(echo python2 $a --flash False --convert_fasta False --combine_fasta False --output /scratch.global/rabdill/bulk/${PROJECT}/trimmed)
 
-echo "DONE"
+echo "DONE. Starting DADA2 run."
+qsub ../code/run_dada.pbs -v PROJECT=${PROJECT}
+
+echo "${PROJECT},trim,end" >> ~/shithouse/activity.csv

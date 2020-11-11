@@ -7,6 +7,8 @@
 
 # PROCESSING with DADA2
 
+echo "${PROJECT},dada,start" >> ~/shithouse/activity.csv
+
 module load singularity
 
 cmd=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
@@ -23,3 +25,5 @@ fi
 echo "Moving results"
 cp -R /scratch.global/rabdill/bulk/${PROJECT}/results ~/shithouse/results/${PROJECT}
 echo "DONE"
+
+echo "${PROJECT},dada,end" >> ~/shithouse/activity.csv
