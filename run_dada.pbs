@@ -9,9 +9,9 @@
 
 module load singularity
 
-nopair=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh | grep \\-SE | wc -l)
+cmd=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
 
-if [ "$nopair" -eq 1 ]
+if [[ "$cmd" == *"-SE"* ]]
   then
     echo "Running DADA2 in SINGLE-ENDED MODE"
     singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_forwards.R
