@@ -59,55 +59,7 @@ dev.off()
 # err_reverse_reads <- readRDS('../temp/err_reverse_reads.rds')
 
 
-#######################
-# Grab a sample to process
-######################
-if(length(samples) > 15) {
-  subsamples <- sample(samples, 15)
-} else {
-  subsamples <- samples
-}
-
-subfiltered_forward_reads <- paste0("../intermediate/", subsamples, ".R1.filtered.fastq.gz")
-subfiltered_reverse_reads <- paste0("../intermediate/", subsamples, ".R2.filtered.fastq.gz")
-
-# Dereplicate
-subderep_forward <- derepFastq(subfiltered_forward_reads, verbose=TRUE)
-names(subderep_forward) <- subsamples
-subderep_reverse <- derepFastq(subfiltered_reverse_reads, verbose=TRUE)
-names(subderep_reverse) <- subsamples
-# count table
-subdada_forward <- dada(subderep_forward, err=err_forward_reads, multithread=TRUE)
-subdada_reverse <- dada(subderep_reverse, err=err_reverse_reads, multithread=TRUE)
-
-getN <- function(x) sum(getUniques(x))
-# count the forward reads we classified
-dada_f=sapply(subdada_forward, getN)
-
-minoverlap = 0
-for(mintest in c(235, 200, 165, 140, 115, 90, 75, 60, 20)) {
-  submerged_amplicons <- mergePairs(subdada_forward, subderep_forward, subdada_reverse,
-                                 subderep_reverse, trimOverhang=TRUE, minOverlap=mintest)
-  
-  # count the merged reads we ended up with
-  merged=sapply(submerged_amplicons, getN)
-  
-  if(sum(merged) / sum(dada_f) > 0.65) {
-    minoverlap = mintest
-    log(paste("Proceeding with minOverlap of", minoverlap, "based on merge rate of", sum(merged) / sum(dada_f)))
-    break
-  }
-  log(paste("Tested", mintest, "but got a merge rate of", (sum(merged) / sum(dada_f))))
-}
-
-if(minoverlap == 0) {
-  stop("COULDN'T DETERMINE AN OVERLAP SETTING. BAILING.")
-}
-
-#########################
-# RETURNING TO PROCESSING THE FULL DATASET
-#########################
-#Dereplicate identical reads
+# Dereplicate identical reads
 log('Dereplicating...')
 derep_forward <- derepFastq(filtered_forward_reads, verbose=TRUE)
 names(derep_forward) <- samples # the sample names in these objects are initially the file names of the samples, this sets them to the sample names for the rest of the workflow
@@ -134,7 +86,7 @@ dada_reverse <- dada(derep_reverse, err=err_reverse_reads, multithread=TRUE)
 
 log('Merging reads...')
 merged_amplicons <- mergePairs(dada_forward, derep_forward, dada_reverse,
-                               derep_reverse, trimOverhang=TRUE, minOverlap=minoverlap)
+                               derep_reverse, trimOverhang=TRUE, minOverlap=12)
 
 seqtab <- makeSequenceTable(merged_amplicons)
 # check for chimeras
