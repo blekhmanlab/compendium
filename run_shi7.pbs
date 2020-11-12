@@ -94,4 +94,4 @@ esac
 
 echo "Starting DADA2 run with ${mem} GB of memory."
 cd ~/shithouse/logs
-qsub ../code/run_dada.pbs -v PROJECT=${PROJECT} -l mem=$mem
+qsub ../code/run_dada.pbs -v PROJECT=${PROJECT} -l mem=${mem}gb
