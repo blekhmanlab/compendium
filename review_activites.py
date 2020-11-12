@@ -8,7 +8,8 @@ from collections import defaultdict
 progress = defaultdict(lambda: {
     'download': [],
     'trim': [],
-    'dada': []
+    'dada': [],
+    'archive': []
 })
 
 with open('activity.csv','r') as f:
@@ -19,7 +20,7 @@ with open('activity.csv','r') as f:
 
 for study in progress.keys():
     next_study = False # whether to move on
-    for task in ['download','trim','dada']:
+    for task in ['download','trim','dada','archive']:
         if 'end' not in progress[study][task]:
             if 'start' not in progress[study][task]:
                 print(f'{study} never started {task}')
