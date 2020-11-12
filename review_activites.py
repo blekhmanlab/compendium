@@ -5,6 +5,10 @@
 import csv
 from collections import defaultdict
 
+# some projects are going to have problems we don't want to address
+# until later, so leave them out of the list:
+ignore = ['PRJNA311499']
+
 progress = defaultdict(lambda: {
     'download': [],
     'trim': [],
@@ -24,7 +28,7 @@ with open('../activity.csv','r') as f:
         progress[project][task].append(event)
 
 for study in progress.keys():
-    next_study = False # whether to move on
+    if study in ignore: continue
     for task in ['download','trim','dada','archive']:
         if 'end' not in progress[study][task]:
             if 'start' not in progress[study][task]:
