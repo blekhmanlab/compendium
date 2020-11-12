@@ -12,12 +12,17 @@ progress = defaultdict(lambda: {
     'archive': []
 })
 
-with open('activity.csv','r') as f:
+with open('../activity.csv','r') as f:
     reader = csv.reader(f)
     for line in reader:
+        if len(line) != 3:
+            print("!!! Unexpected formatting:") # if two writes happen simultaneously?
+            print(line)
+            print("Exiting.")
+            exit(1)
         project, task, event = line
         progress[project][task].append(event)
-
+done = []
 for study in progress.keys():
     next_study = False # whether to move on
     for task in ['download','trim','dada','archive']:
@@ -28,3 +33,8 @@ for study in progress.keys():
             else:
                 print(f'{study} started {task} but did not finish')
                 break
+    if 'end' in progress[study]['archive']:
+        done.append(study)
+
+print("----\nDONE:\n---")
+print(done)

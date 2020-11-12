@@ -1,18 +1,23 @@
 # shithouse
 **Large-scale characterization of the human microbiome using machine learning**
 
+Kicking off the download script should start a chain of jobs that process the whole study:
 ```sh
 cd ~/shithouse/logs
-# downloads fastq files:
-qsub ../code/download_bulk.pbs -v PROJECT=PRJNA513489
+qsub ../code/download_bulk.pbs -v PROJECT=PRJNA547558
+```
 
-# trim reads (the download script should submit this automatically now)
-#qsub ../code/run_shi7.pbs -v PROJECT=PRJNA493625
+Then eyeball the results to make sure everything finished properly:
 
-# extract ASV table for study
-qsub ../code/run_dada.pbs -v PROJECT=PRJNA666641
+```sh
+tail PRJNA513489dada.*
+head ../results/PRJNA513489/summary.tsv
+head ../results/PRJNA513489/ASVs_taxonomy.tsv
+```
 
-# clean up the extra files
+Then clean up the extra files:
+
+```sh
 bash ../code/cleanup_project.sh PRJNA493625
 ```
 
