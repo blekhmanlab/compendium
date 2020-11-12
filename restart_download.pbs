@@ -11,9 +11,7 @@
 # to be downloaded from SRA.
 echo "${PROJECT},download,start" >> ~/shithouse/activity.csv
 
-mv ~/shithouse/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/
 cd /scratch.global/rabdill/bulk/${PROJECT}
-mkdir fastq
 
 #module load aspera
 module load sratoolkit # currently 2.8.2
@@ -41,3 +39,4 @@ echo "${PROJECT},download,end" >> ~/shithouse/activity.csv
 
 cd ~/shithouse/logs
 qsub ../code/run_shi7.pbs -v PROJECT=${PROJECT}
+

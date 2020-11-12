@@ -21,7 +21,10 @@ Then clean up the extra files:
 bash ../code/cleanup_project.sh PRJNA493625
 ```
 
-This should (ideally) result in a file at `~/shithouse/results/summaries/PRJNA493625_summary.tsv` and an ASV table at `~/shithouse/results/PRJNA493625.tsv`
+You can check on projects that got stalled in the pipeline by running:
+```sh
+python3 ../code/review_activites.py
+```
 
 ## Troubleshooting
 If DADA2 fails with
