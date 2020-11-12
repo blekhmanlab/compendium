@@ -4,7 +4,7 @@
 ```sh
 cd ~/shithouse/logs
 # downloads fastq files:
-qsub ../code/download_bulk.pbs -v PROJECT=PRJNA666641
+qsub ../code/download_bulk.pbs -v PROJECT=PRJNA513489
 
 # trim reads (the download script should submit this automatically now)
 #qsub ../code/run_shi7.pbs -v PROJECT=PRJNA493625
