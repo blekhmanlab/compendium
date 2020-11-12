@@ -1,4 +1,14 @@
 #!/bin/bash -e
+
+head ~/shithouse/results/${1}/ASVs_taxonomy.tsv
+head ~/shithouse/results/${1}/summary.tsv
+echo "Clean up project ${1}?"
+read doit
+if [[ $doit!='y' ]]; then
+    echo 'Skipping.'
+    exit 0
+fi
+
 echo "${1},archive,start" >> ~/shithouse/activity.csv
 
 cd /scratch.global/rabdill/bulk/${1}
