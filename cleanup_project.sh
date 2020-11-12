@@ -4,7 +4,7 @@ head ~/shithouse/results/${1}/ASVs_taxonomy.tsv
 head ~/shithouse/results/${1}/summary.tsv
 echo "Clean up project ${1}?"
 read doit
-if [[ $doit!='y' ]]; then
+if [[ "$doit" != "y" ]]; then
     echo 'Skipping.'
     exit 0
 fi
