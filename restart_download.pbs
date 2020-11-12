@@ -3,7 +3,7 @@
 #PBS -q blekhman
 #PBS -m abe 
 #PBS -M rabdill@umn.edu
-#PBS -N ${PROJECT}download
+#PBS -N ${PROJECT}redownload
 
 # This script expects a directory matching the project name
 # to be present at ~/shithouse/accession_lists/
