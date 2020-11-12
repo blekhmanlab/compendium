@@ -12,6 +12,9 @@ mkdir /scratch.global/rabdill/bulk/${PROJECT}/trimmed # for shi7
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/intermediate # for dada2
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/temp
 
+# make sure there isn't a readlength record from some previous failed run
+rm -f /scratch.global/rabdill/bulk/${PROJECT}/temp/readlength.raw.txt
+
 # record read lengths
 echo "Assessing read length..."
 for filename in /scratch.global/rabdill/bulk/${PROJECT}/fastq/*.fastq; do
