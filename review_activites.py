@@ -7,7 +7,7 @@ from collections import defaultdict
 
 # some projects are going to have problems we don't want to address
 # until later, so leave them out of the list:
-ignore = ['PRJNA311499']
+ignore = ['PRJNA311499','PRJNA342173','PRJNA322188']
 
 progress = defaultdict(lambda: {
     'download': [],
