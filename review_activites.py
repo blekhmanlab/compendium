@@ -28,14 +28,20 @@ with open('../activity.csv','r') as f:
             exit(1)
         project, task, event = line
         progress[project][task].append(event)
-
+to_archive = []
 for study in progress.keys():
     if study in ignore: continue
     for task in ['download','trim','dada','archive']:
         if 'end' not in progress[study][task]:
             if 'start' not in progress[study][task]:
-                print(f'{study} never started {task}')
+                if task=='archive':
+                    to_archive.append(study)
+                else:
+                    print(f'{study} never started {task}')
                 break
             else:
                 print(f'{study} started {task} but did not finish')
                 break
+if len(to_archive) > 0:
+    print('\n--\nTO ARCHIVE:')
+    [print(x) for x in to_archive]
