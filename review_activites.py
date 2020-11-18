@@ -8,7 +8,10 @@ from collections import defaultdict
 # some projects are going to have problems we don't want to address
 # until later, so leave them out of the list:
 ignore = ['PRJNA311499','PRJNA342173','PRJNA322188',
-    'PRJNA277216', 'PRJNA206071', 'PRJNA597697'
+    'PRJNA277216', 'PRJNA206071', 'PRJNA597697',
+    'PRJNA510835','PRJNA642721','PRJNA263853',
+    'PRJNA281060','PRJNA544545','PRJNA589622',
+    'PRJNA482074','PRJNA285808'
 ]
 
 progress = defaultdict(lambda: {
