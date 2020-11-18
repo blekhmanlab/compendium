@@ -66,7 +66,7 @@ seqtab <- makeSequenceTable(dada_forward)
 # Get rid of really short sequences that can't practically be used
 # to assign taxonomy:
 seqtab.noshort <- seqtab[,nchar(colnames(seqtab)) > 49]
-log(paste('Removed',length(colnames(seqtab) - length(colnames(seqtab.noshort)),'ASVs for being too short.'))
+log(paste('Removed',length(colnames(seqtab) - length(colnames(seqtab.noshort)),'ASVs for being too short.')))
 
 # check for chimeras
 log('Removing bimeras...')
