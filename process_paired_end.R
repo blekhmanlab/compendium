@@ -93,7 +93,7 @@ seqtab <- makeSequenceTable(merged_amplicons)
 # Get rid of really short sequences that can't practically be used
 # to assign taxonomy:
 seqtab.noshort <- seqtab[,nchar(colnames(seqtab)) > 49]
-diff <- length(colnames(seqtab) - length(colnames(seqtab.noshort))
+diff <- length(colnames(seqtab)) - length(colnames(seqtab.noshort))
 log(paste('Removed',diff,'ASVs for being too short.'))
 
 # check for chimeras
