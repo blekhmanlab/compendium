@@ -31,7 +31,8 @@ filtered_reverse_reads <- paste0("../intermediate/", samples, ".R2.filtered.fast
 log('Filtering...')
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
                               reverse_reads, filtered_reverse_reads,
-                              truncQ=0, rm.phix=TRUE, multithread=4)
+                              truncQ=0, rm.phix=TRUE, multithread=4,
+                              verbose=TRUE)
 
 # saveRDS(filtered_out, '../temp/filtered_out.rds')
 # filtered_out <- readRDS('../temp/filtered_out.rds')
