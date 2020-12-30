@@ -49,7 +49,7 @@ annotated <- samplenames %>% left_join(allcountries, by = "srr")
 library(ggplot2)  # for data visualization
 library(h2o)  # for fitting autoencoders
 
-h2o.init(max_mem_size = "10g")
+h2o.init(max_mem_size = "10g")#, nthreads=3) # we should specify threads
 variance <- sapply(clr.trimmedname, sd)
 hist(variance)
 sum(variance > 0.35)
@@ -68,12 +68,13 @@ hyper_grid <- list(
   sparsity_beta = c(0.01, 0.1, 0.2, 0.5),
   hidden = list(
     c(25),
+    c(50),
     c(80),
-    c(100),
-    c(50,15,50),
-    c(100, 50, 100)
+    c(100)
+    #c(100, 50, 100)
   ),
-  average_activation = c(-0.5, -0.1, 0, 0.1, 0.5)
+  #average_activation = c(-0.5, -0.1, 0, 0.1, 0.5),
+  epochs = c(10,25,50)
 )
 
 # Execute grid search
@@ -81,27 +82,32 @@ big_grid <- h2o.grid(
   algorithm = 'deeplearning',
   x = seq_along(features),
   training_frame = features,
-  grid_id = 'big_grid',
+  grid_id = 'big_grid_epochs',
   autoencoder = TRUE,
   activation = 'Tanh',
   hyper_params = hyper_grid,
   sparse = TRUE,
-  ignore_const_cols = FALSE,
-  seed = 123
+  seed = 123,
+  export_weights_and_biases = TRUE
 )
-big_grid <- h2o.getGrid('big_grid', sort_by = 'mse', decreasing = FALSE)
+big_grid <- h2o.getGrid('big_grid_epochs', sort_by = 'mse', decreasing = FALSE)
 best_model_id <- big_grid@model_ids[[1]]
 best_model <- h2o.getModel(best_model_id)
 
+final_weights <- as.data.frame(h2o.weights(best_model))
+# most influential taxa
+z <- colMeans(abs(final_weights))
+
+
 # get the LVs!!!
-new_codings <- h2o.deepfeatures(best_model, features, layer = 2)
+new_codings <- h2o.deepfeatures(best_model, features, layer = 1)
 new_codings <- as.data.frame(new_codings)
 rownames(new_codings) <- rownames(training)
 
 library(Rtsne)
 set.seed(1234)
 tsned <- Rtsne(as.matrix(new_codings), perplexity=45,
-               pca=FALSE, max_iter=3000, num_threads=6,
+               pca=FALSE, max_iter=1000, num_threads=3,
                theta=0.5)
 
 # make a list of all countries for the samples
@@ -114,44 +120,53 @@ ggplot(toplot, aes(x=V1, y=V2, color=countries_toplot$standard)) +
   geom_point() +
   theme_bw()
 
-# add countries to the actual data
-rftrain <- new_codings
-rftrain$srr <- rownames(new_codings)
-rftrain <- rftrain %>% inner_join(allcountries, by = "srr")
-
 # add continent annotation
 continents <- read.csv('continents.csv')
-rftrain <- rftrain %>% inner_join(continents, by = "standard")
-rftrain <- rftrain[rftrain$continent != '',]
-rftrain$continent <- as.factor(rftrain$continent)
+countries_toplot <- countries_toplot %>% left_join(continents, by = "standard")
+ggplot(toplot, aes(x=V1, y=V2, color=countries_toplot$continent)) +
+  geom_point() +
+  theme_bw()
 
-predictors <- colnames(rftrain)[1:50]
+############################3
+### TRAIN RANDOM FOREST MODEL ON LVs
+####################3
+# add countries to the actual data
+rftraindata <- new_codings
+rftraindata$srr <- rownames(new_codings)
+rftraindata <- rftraindata %>% inner_join(allcountries, by = "srr")
+
+# add continent annotation
+rftraindata <- rftraindata %>% inner_join(continents, by = "standard")
+rftraindata <- rftraindata[rftraindata$continent != '',]
+rftraindata$continent <- as.factor(rftraindata$continent)
+
+predictors <- colnames(rftraindata)[1:(ncol(rftraindata)-4)]
 response <- "continent"
 
-rftrain <- as.h2o(rftrain)
+rftrain <- as.h2o(rftraindata)
 
 rfsplit <- h2o.splitFrame(data = rftrain, ratios = 0.8, seed = 1234)
 train <- rfsplit[[1]]
 valid <- rfsplit[[2]]
 
 # Build and train the model:
-cars_drf <- h2o.randomForest(x = predictors,
+lv_model <- h2o.randomForest(x = predictors,
                              y = response,
-                             ntrees = 50,
-                             max_depth = 20,
+                             ntrees = 250,
+                             max_depth = 40,
                              min_rows = 10,
                              balance_classes = TRUE,
                              training_frame = train,
                              validation_frame = valid)
 
 # Eval performance:
-perf <- h2o.performance(cars_drf)
+perf <- h2o.performance(lv_model)
 perf
 
 ################################
 # Pull in the REAL validation dataset:
 topredict <- as.h2o(sampled_digits)
-lockbox <- h2o.deepfeatures(best_model, topredict, layer = 2)
+lockbox <- h2o.deepfeatures(best_model, topredict, layer = 1)
 lockbox <- as.data.frame(lockbox)
 rownames(lockbox) <- rownames(sampled_digits)
 
@@ -164,6 +179,59 @@ lockbox <- lockbox[lockbox$continent != '',]
 lockbox$continent <- as.factor(lockbox$continent)
 lockbox <- as.h2o(lockbox)
 
-predict <- h2o.predict(cars_drf, newdata = lockbox)
-z <- as.data.frame(predict)
-sum(predict$predict == lockbox$continent)
+lvlockbox_perf <- h2o.performance(lv_model, newdata = lockbox)
+lvlockbox_perf
+
+
+
+##########################
+### TEST USING ASV TABLE INSTEAD OF LVs
+##########################
+
+# add countries to the actual data
+asvtrain <- training
+asvtrain$srr <- rownames(training)
+asvtrain <- asvtrain %>% inner_join(allcountries, by = "srr")
+
+# add continent annotation
+continents <- read.csv('continents.csv')
+asvtrain <- asvtrain %>% inner_join(continents, by = "standard")
+asvtrain <- asvtrain[asvtrain$continent != '',]
+asvtrain$continent <- as.factor(asvtrain$continent)
+
+predictors <- colnames(asvtrain)[1:(ncol(asvtrain)-4)]
+response <- "continent"
+
+asvtrain <- as.h2o(asvtrain)
+
+asvsplit <- h2o.splitFrame(data = asvtrain, ratios = 0.8, seed = 1234)
+asvtrain <- asvsplit[[1]]
+asvvalid <- asvsplit[[2]]
+
+# Build and train the model:
+asv_model <- h2o.randomForest(x = predictors,
+                              y = response,
+                              ntrees = 250,
+                              max_depth = 40,
+                              min_rows = 10,
+                              balance_classes = TRUE,
+                              training_frame = asvtrain,
+                              validation_frame = asvvalid)
+
+# Eval performance:
+asvperf <- h2o.performance(asv_model)
+asvperf
+
+################################
+# Pull in the REAL validation dataset:
+asvlockbox <- sampled_digits
+asvlockbox$srr <- rownames(asvlockbox)
+asvlockbox <- asvlockbox %>% inner_join(allcountries, by = "srr")
+
+continents <- read.csv('continents.csv')
+asvlockbox <- asvlockbox %>% inner_join(continents, by = "standard")
+asvlockbox <- asvlockbox[asvlockbox$continent != '',]
+asvlockbox$continent <- as.factor(asvlockbox$continent)
+asvlockbox <- as.h2o(asvlockbox)
+
+asvlockbox_perf <- h2o.performance(asv_model, newdata = asvlockbox)
