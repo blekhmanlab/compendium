@@ -104,6 +104,12 @@ new_codings <- h2o.deepfeatures(best_model, features, layer = 1)
 new_codings <- as.data.frame(new_codings)
 rownames(new_codings) <- rownames(training)
 
+# clustering:
+d <- dist(heatplot.high, method = "euclidean")
+clustering <- hclust(d, method='complete')
+plot(clustering)
+
+# t-SNE!
 library(Rtsne)
 set.seed(1234)
 tsned <- Rtsne(as.matrix(new_codings), perplexity=45,
@@ -126,6 +132,19 @@ countries_toplot <- countries_toplot %>% left_join(continents, by = "standard")
 ggplot(toplot, aes(x=V1, y=V2, color=countries_toplot$continent)) +
   geom_point() +
   theme_bw()
+
+
+# heatmap
+heatplot <- new_codings
+lv_variance <- sapply(heatplot, sd)
+sum(lv_variance > 0.1)
+heatplot.high <- as.matrix(heatplot[,lv_variance > 0.1])
+
+heatmap(heatplot.high)
+
+library(gplots)
+heatmap.2(heatplot.high,dendrogram="none",
+          trace="none",Rowv=FALSE, RowSideColors=countries_toplot$continent)
 
 ############################3
 ### TRAIN RANDOM FOREST MODEL ON LVs
@@ -235,3 +254,42 @@ asvlockbox$continent <- as.factor(asvlockbox$continent)
 asvlockbox <- as.h2o(asvlockbox)
 
 asvlockbox_perf <- h2o.performance(asv_model, newdata = asvlockbox)
+asvlockbox_perf
+
+
+########################
+## DIFFERENTIAL ACTIVATION
+#########################
+
+asia <- rftraindata[rftraindata$continent=='Asia',]
+na <- rftraindata[rftraindata$continent=='NAmerica',]
+x <- wilcox.test(asia$DF.L1.C1, na$DF.L1.C1)
+
+heatmap.2(as.matrix(rbind(asia,na)),dendrogram="none",trace="none",
+          Rowv=FALSE, RowSideColors=as.character(as.numeric(dat$GO)))
+
+results = data.frame(matrix(ncol = 3, nrow = 0))
+colnames(results) <- c('LV', 'W', 'p')
+for(col in colnames(heatplot[,lv_variance > 0.1])) {
+  test <- wilcox.test(asia[[col]], na[[col]])
+  results <- rbind(results, data.frame(LV=col, W=test$statistic, p=test$p.value))
+}
+results
+lvweights.abs <- t(abs(final_weights[32,]))
+lvweights <- t(final_weights[100,])
+median(na$DF.L1.C100)
+median(asia$DF.L1.C100)
+
+combined <- rbind(asia, na)
+library(ggExtra)
+#plain <- ggplot(combined, aes(x=DF.L1.C32, y=DF.L1.C41, color=continent)) +
+plain <- ggplot(combined, aes(x=DF.L1.C32, y=DF.L1.C41, color=continent)) +
+  geom_point() +
+  theme_bw() +
+  theme(
+    legend.position = 'bottom'
+  )
+ggExtra::ggMarginal(plain,
+  type='density',
+  groupColour = TRUE, groupFill=TRUE)
+
