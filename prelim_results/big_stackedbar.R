@@ -27,6 +27,7 @@ combined <- dt[, lapply(.SD, sum), by=list(srr, taxon)]
 final <- combined %>% pivot_wider(names_from=taxon, values_from=count, values_fill=0)
 # get rid of sample names, we don't need em anymore
 final <- as.data.frame(final)
+rownames(final) <- final$srr
 final$srr <- NULL
 
 rel = function(x, na.rm=TRUE){
@@ -44,17 +45,40 @@ variance$taxon <- colnames(final.rel)
 colnames(variance) <- c('sd','taxon')
 variance <- variance[order(-variance$sd),]
 
+# if we want to order the samples using certain taxa,
+# we need an extra copy of those, which we'll attach
+# to every entry for every sample in the pivot_longer version.
 final.rel$sample <- rownames(final.rel)
 
-# if we want to order the samples using certain taxa,
-# we need an extra copy of those
-
-# go BACK to long form to plot
+# now go BACK to long form to plot
 final.long <- final.rel %>% pivot_longer(!sample, names_to = "taxon", values_to = "rel")
 
+final.long$taxon <- factor(final.long$taxon, levels=variance$taxon)
+
+final.long$sample <- factor(final.long$sample, levels=final.rel[
+    order(final.rel[[variance$taxon[1]]],
+          final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]],
+          final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]]+final.rel[[variance$taxon[3]]],
+          final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]]+final.rel[[variance$taxon[3]]]+final.rel[[variance$taxon[4]]]),
+  ]$sample)
+
+# trying to group by more than just the first level makes everything
+# look lumpy
+#final.long$sample <- factor(final.long$sample, levels=final.rel[
+#  order(round(final.rel[[variance$taxon[1]]], digits=1),
+#        round(final.rel[[variance$taxon[2]]], digits=1),
+#        round(final.rel[[variance$taxon[3]]], digits=1),
+#        final.rel[[variance$taxon[4]]]),
+#]$sample)
+
 ggplot(final.long, aes(fill=taxon, y=rel, x=sample)) + 
-  geom_bar(position="fill", stat="identity") +
+  geom_bar(stat="identity") +
   theme_bw() +
   theme(
-    legend.position='bottom'
-  )
+    legend.position='bottom',
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank()
+  ) +
+  scale_fill_manual(values=c('red','blue','yellow',rep('gray',40)))
+
+#TODO: ADD CONTINENT FACET??
