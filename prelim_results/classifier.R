@@ -1,4 +1,9 @@
+library(ggplot2)
 library(ggfortify)
+library(dplyr)    # for data manipulation
+library(tidyr)
+library(gplots) # for heatmap.2
+
 setwd('~/code/shithouse/prelim_results')
 
 x <- read.csv('studies_consolidated.tsv', sep='\t')
@@ -13,16 +18,13 @@ reads <- reads[,colSums(reads) > 70]
 #reads = reads[,!sapply(df, function(x) mean(x==0))>0.1]
 
 
-library(dplyr)    # for data manipulation
-library(tidyr)
-
 # CLR TRANSFORM VERSION
 # fix zeroes
 library(zCompositions)
 
-load(file="reads.nozero.Rda")
 #reads.nozero <- cmultRepl(reads, label=0, method='SQ', output="p-counts") # default method won't work
 #save(reads.nozero, file="reads.nozero.Rda")
+load(file="reads.nozero.Rda")
 reads.nozero <- unique(reads.nozero) # GET RID OF DUPLICATES
 
 gm_mean = function(x, na.rm=TRUE){
@@ -103,11 +105,6 @@ z <- colMeans(abs(final_weights))
 new_codings <- h2o.deepfeatures(best_model, features, layer = 1)
 new_codings <- as.data.frame(new_codings)
 rownames(new_codings) <- rownames(training)
-
-# clustering:
-d <- dist(heatplot.high, method = "euclidean")
-clustering <- hclust(d, method='complete')
-plot(clustering)
 
 # t-SNE!
 library(Rtsne)
@@ -263,18 +260,14 @@ asvlockbox_perf
 
 asia <- rftraindata[rftraindata$continent=='Asia',]
 na <- rftraindata[rftraindata$continent=='NAmerica',]
-x <- wilcox.test(asia$DF.L1.C1, na$DF.L1.C1)
-
-heatmap.2(as.matrix(rbind(asia,na)),dendrogram="none",trace="none",
-          Rowv=FALSE, RowSideColors=as.character(as.numeric(dat$GO)))
 
 results = data.frame(matrix(ncol = 3, nrow = 0))
 colnames(results) <- c('LV', 'W', 'p')
-for(col in colnames(heatplot[,lv_variance > 0.1])) {
+for(col in colnames(heatplot)) {
   test <- wilcox.test(asia[[col]], na[[col]])
   results <- rbind(results, data.frame(LV=col, W=test$statistic, p=test$p.value))
 }
-results
+
 lvweights.abs <- t(abs(final_weights[32,]))
 lvweights <- t(final_weights[100,])
 median(na$DF.L1.C100)
@@ -290,6 +283,16 @@ plain <- ggplot(combined, aes(x=DF.L1.C32, y=DF.L1.C41, color=continent)) +
     legend.position = 'bottom'
   )
 ggExtra::ggMarginal(plain,
-  type='density',
-  groupColour = TRUE, groupFill=TRUE)
+                    type='density',
+                    groupColour = TRUE, groupFill=TRUE)
 
+colors <- as.character(combined$continent)
+colors <- replace(colors, colors=='Asia','red')
+colors <- replace(colors, colors=='NAmerica','black')
+
+# only cluster (and display) using the most differentially activated LVs
+ordered <- results[order(results$p),]$LV[1:10]
+
+heatmap.2(as.matrix(combined[,ordered]),dendrogram="none",trace="none",
+          Rowv=FALSE, rowsep=c(length(asia$DF.L1.C1)), sepwidth=c(30,30),
+          RowSideColors=colors)

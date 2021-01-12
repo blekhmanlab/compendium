@@ -2,6 +2,9 @@ library(ggplot2)
 library(dplyr)    # for data manipulation
 library(tidyr) # for pivot
 library(data.table)
+library(scales) # for y-axis labels
+library(ggrepel) # for labels in scatter plot
+library(patchwork)
 
 setwd('~/code/shithouse/prelim_results')
 
@@ -53,13 +56,15 @@ final.rel$sample <- rownames(final.rel)
 # now go BACK to long form to plot
 final.long <- final.rel %>% pivot_longer(!sample, names_to = "taxon", values_to = "rel")
 
-final.long$taxon <- factor(final.long$taxon, levels=variance$taxon)
+final.long[!(final.long$taxon %in% variance$taxon[1:5]),]$taxon <- 'other'
+final.long$taxon <- factor(final.long$taxon, levels=c(variance$taxon, 'other'))
 
 final.long$sample <- factor(final.long$sample, levels=final.rel[
     order(final.rel[[variance$taxon[1]]],
           final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]],
           final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]]+final.rel[[variance$taxon[3]]],
-          final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]]+final.rel[[variance$taxon[3]]]+final.rel[[variance$taxon[4]]]),
+          final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]]+final.rel[[variance$taxon[3]]]+final.rel[[variance$taxon[4]]],
+          final.rel[[variance$taxon[1]]]+final.rel[[variance$taxon[2]]]+final.rel[[variance$taxon[3]]]+final.rel[[variance$taxon[4]]]+final.rel[[variance$taxon[5]]]),
   ]$sample)
 
 # trying to group by more than just the first level makes everything
@@ -71,14 +76,88 @@ final.long$sample <- factor(final.long$sample, levels=final.rel[
 #        final.rel[[variance$taxon[4]]]),
 #]$sample)
 
-ggplot(final.long, aes(fill=taxon, y=rel, x=sample)) + 
+panel_a <- ggplot(final.long, aes(fill=taxon, y=rel, x=sample)) + 
   geom_bar(stat="identity") +
   theme_bw() +
   theme(
     legend.position='bottom',
+    legend.text=element_text(size=10),
     axis.text.x=element_blank(),
     axis.ticks.x=element_blank()
   ) +
-  scale_fill_manual(values=c('red','blue','yellow',rep('gray',40)))
+  scale_fill_brewer(palette='Set1',
+     labels=c('Firmicutes', 'Bacteroidota', 'Proteobacteria', 'Actinobacteria','Euryarchaeota','other')) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x='Sample',y='Relative abundance', fill='Class')
+
+
+totalcounts <- data.frame(
+  continent = c('North America','Europe', 'Asia','Africa','Oceania','South America','(unknown)'),
+  samples = c(78123,42939,22201,9479,4636,3843,8797),
+  label_pos = c(71123,35939,15201,15479,10636,9843,14797)
+)
+totalcounts$continent <- factor(totalcounts$continent,
+                                   levels=rev(totalcounts$continent))
+
+panel_b <- ggplot(totalcounts, aes(x=continent, y=samples)) +
+  geom_bar(stat='identity', fill='#007117') +
+  geom_text(aes(x=continent, y=label_pos,
+      label=scales::comma(samples),
+      color=c(rep('white',3), rep('black',4))),
+      fontface='bold') +
+    scale_color_manual(values=c('black','white')) +
+  theme_bw() +
+  labs(x='Continent', y='Human fecal samples') +
+  coord_flip() +
+  scale_y_continuous(labels=comma, expand=c(0,4000)) +
+  theme(
+    axis.text=element_text(size=11),
+    legend.position='none'
+  )
+
+# t-SNE
+library(Rtsne)
+load(file="reads.nozero.Rda")
+reads.nozero <- unique(reads.nozero) # GET RID OF DUPLICATES
+
+gm_mean = function(x, na.rm=TRUE){
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+clr <- apply(reads.nozero, 1, function(a) log(a/gm_mean(a)))
+clr <- as.data.frame(t(clr))
+
+#to_tsne$sample <- NULL
+#to_tsne <- unique(to_tsne)
+
+set.seed(1234)
+tsned <- Rtsne(as.matrix(clr), perplexity=475,
+               max_iter=5000, num_threads=3,
+               theta=0.5)
+toplot <- as.data.frame(tsned$Y)
+
+allcountries <- read.csv('sample_countries.csv')
+
+countries_toplot <- as.data.frame(rownames(clr))
+colnames(countries_toplot) <- c('srr')
+# trim off project names
+countries_toplot$srr <- gsub('^[^_]+_','', countries_toplot$srr)
+countries_toplot <- countries_toplot %>% left_join(allcountries, by = "srr")
+countries_toplot[is.na(countries_toplot$X),]$X <- '?'
+countries_toplot[countries_toplot$X=='?',]$X <- '(unknown)'
+
+panel_c <- ggplot(toplot, aes(x=V1, y=V2, color=countries_toplot$X)) +
+  geom_point() +
+  labs(x='tSNE1',y='tSNE2',color='Continent') +
+  theme_bw() +
+  theme(
+    legend.position='bottom'
+  )
+
+
+panel_a / (panel_b|panel_c)
 
 #TODO: ADD CONTINENT FACET??
+
+# prevalence
+prevalence <- as.data.frame(colSums(final.rel != 0)/nrow(final.rel))
+colnames(prevalence) <- c('prevalence')
