@@ -3,7 +3,6 @@
 #SBATCH --mem=2G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
-#SBATCH --job-name=${PROJECT}redownload
 
 # This script expects a directory matching the project name
 # to be present at ~/shithouse/accession_lists/
@@ -45,4 +44,4 @@ echo "DONE. Submitting trimming job."
 echo "${PROJECT},download,end" >> ~/shithouse/activity.csv
 
 cd ~/shithouse/logs
-sbatch  --export=PROJECT=${PROJECT} ../code/run_shi7.slurm
+sbatch  --export=PROJECT=${PROJECT} --job-name=${PROJECT}trim ../code/run_shi7.slurm

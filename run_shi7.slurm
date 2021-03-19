@@ -3,7 +3,6 @@
 #SBATCH --mem=2G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
-#SBATCH --job-name=${PROJECT}trim
 
 echo "${PROJECT},trim,start" >> ~/shithouse/activity.csv
 
@@ -91,4 +90,4 @@ esac
 
 echo "Starting DADA2 run with ${mem} GB of memory."
 cd ~/shithouse/logs
-sbatch --mem=${mem}G --export=PROJECT=${PROJECT} ../code/run_dada.slurm
+sbatch --mem=${mem}G --export=PROJECT=${PROJECT} --job-name=${PROJECT}dada ../code/run_dada.slurm

@@ -3,7 +3,6 @@
 #SBATCH --mem=32G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
-#SBATCH --job-name=${PROJECT}dada
 
 # PROCESSING with DADA2
 
