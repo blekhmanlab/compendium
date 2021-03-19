@@ -9,6 +9,13 @@
 # to be present at ~/shithouse/accession_lists/
 # with a file in it called "SraAccList.txt" listing all the samples
 # to be downloaded from SRA.
+
+if [ -z "${PROJECT}" ]
+then
+      echo "PROJECT variable is EMPTY. Bailing"
+      exit 1
+fi
+
 echo "${PROJECT},download,start" >> ~/shithouse/activity.csv
 
 mv ~/shithouse/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/
