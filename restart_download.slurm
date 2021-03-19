@@ -9,6 +9,13 @@
 # to be present at ~/shithouse/accession_lists/
 # with a file in it called "SraAccList.txt" listing all the samples
 # to be downloaded from SRA.
+
+if [ -z "${PROJECT}" ]
+then
+      echo "PROJECT variable is EMPTY. Bailing"
+      exit 1
+fi
+
 echo "${PROJECT},download,start" >> ~/shithouse/activity.csv
 
 cd /scratch.global/rabdill/bulk/${PROJECT}
@@ -38,4 +45,4 @@ echo "DONE. Submitting trimming job."
 echo "${PROJECT},download,end" >> ~/shithouse/activity.csv
 
 cd ~/shithouse/logs
-sbatch ../code/run_shi7.slurm --export=PROJECT=${PROJECT}
+sbatch  --export=PROJECT=${PROJECT} ../code/run_shi7.slurm

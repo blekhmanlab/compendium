@@ -91,4 +91,4 @@ esac
 
 echo "Starting DADA2 run with ${mem} GB of memory."
 cd ~/shithouse/logs
-sbatch ../code/run_dada.slurm --mem=${mem}G --export=PROJECT=${PROJECT}
+sbatch --mem=${mem}G --export=PROJECT=${PROJECT} ../code/run_dada.slurm
