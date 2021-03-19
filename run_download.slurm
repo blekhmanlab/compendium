@@ -46,4 +46,4 @@ echo "DONE. Submitting trimming job."
 echo "${PROJECT},download,end" >> ~/shithouse/activity.csv
 
 cd ~/shithouse/logs
-sbatch  --export=PROJECT=${PROJECT} --job-name=${PROJECT}trim ../code/run_shi7.slurm
+sbatch --export=PROJECT=${PROJECT} --job-name=${PROJECT}trim -o ${PROJECT}trim.log ../code/run_shi7.slurm
