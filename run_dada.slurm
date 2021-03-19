@@ -1,9 +1,9 @@
 #!/bin/bash -e
-#PBS -l walltime=32:00:00,nodes=1:ppn=8,mem=32gb
-#PBS -q blekhman
-#PBS -m a
-#PBS -M rabdill@umn.edu
-#PBS -N ${PROJECT}dada
+#SBATCH -t 1920 -N 1
+#SBATCH --mem=32G
+#SBATCH -p blekhman
+#SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
+#SBATCH --job-name=${PROJECT}dada
 
 # PROCESSING with DADA2
 

@@ -1,9 +1,9 @@
 #!/bin/bash -e
-#PBS -l walltime=16:00:00,nodes=1:ppn=8,mem=16gb
-#PBS -q blekhman
-#PBS -m a
-#PBS -M rabdill@umn.edu
-#PBS -N ${PROJECT}trim
+#SBATCH -t 960 -N 1
+#SBATCH --mem=2G
+#SBATCH -p blekhman
+#SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
+#SBATCH --job-name=${PROJECT}trim
 
 echo "${PROJECT},trim,start" >> ~/shithouse/activity.csv
 
@@ -25,7 +25,7 @@ cat /scratch.global/rabdill/bulk/${PROJECT}/temp/readlength.raw.txt | uniq -c >>
 
 # TRIMMING with shi7
 # (all this weird formatting is because we have to run shi7 SPECIFICALLY
-#  with python 2, rather than the python 3 that the system defaults to, 
+#  with python 2, rather than the python 3 that the system defaults to,
 #  because of an outstanding bug)
 cd ~/shithouse/shi7_0.9.9/
 echo "Learning shi7 parameters..."
@@ -91,4 +91,4 @@ esac
 
 echo "Starting DADA2 run with ${mem} GB of memory."
 cd ~/shithouse/logs
-qsub ../code/run_dada.pbs -v PROJECT=${PROJECT} -l mem=${mem}gb
+sbatch ../code/run_dada.slurm --mem=${mem}G --export=PROJECT=${PROJECT}

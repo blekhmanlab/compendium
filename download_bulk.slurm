@@ -1,9 +1,9 @@
 #!/bin/bash -e
-#PBS -l walltime=8:00:00,nodes=1:ppn=1,mem=2gb
-#PBS -q blekhman
-#PBS -m a
-#PBS -M rabdill@umn.edu
-#PBS -N ${PROJECT}download
+#SBATCH -t 480 -N 1
+#SBATCH --mem=2G
+#SBATCH -p blekhman
+#SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
+#SBATCH --job-name=${PROJECT}download
 
 # This script expects a directory matching the project name
 # to be present at ~/shithouse/accession_lists/
@@ -40,4 +40,4 @@ echo "DONE. Submitting trimming job."
 echo "${PROJECT},download,end" >> ~/shithouse/activity.csv
 
 cd ~/shithouse/logs
-qsub ../code/run_shi7.pbs -v PROJECT=${PROJECT}
+sbatch ../code/run_shi7.slurm --export=PROJECT=${PROJECT}
