@@ -51,7 +51,7 @@ annotated <- samplenames %>% left_join(allcountries, by = "srr")
 library(ggplot2)  # for data visualization
 library(h2o)  # for fitting autoencoders
 
-h2o.init(max_mem_size = "10g")#, nthreads=3) # we should specify threads
+h2o.init(max_mem_size = "8g")#, nthreads=3) # we should specify threads
 variance <- sapply(clr.trimmedname, sd)
 hist(variance)
 sum(variance > 0.35)
@@ -95,6 +95,8 @@ big_grid <- h2o.grid(
 big_grid <- h2o.getGrid('big_grid_epochs', sort_by = 'mse', decreasing = FALSE)
 best_model_id <- big_grid@model_ids[[1]]
 best_model <- h2o.getModel(best_model_id)
+#h2o.saveModel(best_model, path='~/code/shithouse/prelim_results')
+best_model <- h2o.loadModel('big_grid_epochs_model_34')
 
 final_weights <- as.data.frame(h2o.weights(best_model))
 # most influential taxa

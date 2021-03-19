@@ -80,36 +80,45 @@ panel_a <- ggplot(final.long, aes(fill=taxon, y=rel, x=sample)) +
   geom_bar(stat="identity") +
   theme_bw() +
   theme(
-    legend.position='bottom',
-    legend.text=element_text(size=10),
+    legend.position='none',
+    axis.text=element_text(size=11),
     axis.text.x=element_blank(),
     axis.ticks.x=element_blank()
   ) +
   scale_fill_brewer(palette='Set1',
      labels=c('Firmicutes', 'Bacteroidota', 'Proteobacteria', 'Actinobacteria','Euryarchaeota','other')) +
-  scale_y_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent, expand=c(0,0)) +
   labs(x='Sample',y='Relative abundance', fill='Class')
+
+a_legend <- cowplot::get_legend(panel_a +
+              theme(
+                legend.position='bottom',
+                legend.text = element_text(size=11)
+              )
+            )
+plot(a_legend)
 
 
 totalcounts <- data.frame(
   continent = c('North America','Europe', 'Asia','Africa','Oceania','South America','(unknown)'),
   samples = c(78123,42939,22201,9479,4636,3843,8797),
-  label_pos = c(71123,35939,15201,15479,10636,9843,14797)
+  label_pos = c(71123,50939,30201,15479,10636,9843,14797)
 )
 totalcounts$continent <- factor(totalcounts$continent,
                                    levels=rev(totalcounts$continent))
 
-panel_b <- ggplot(totalcounts, aes(x=continent, y=samples)) +
-  geom_bar(stat='identity', fill='#007117') +
+panel_b <- ggplot(totalcounts, aes(x=continent, y=samples, fill=continent)) +
+  geom_bar(stat='identity') +
+  scale_fill_manual(values=c("#AEAEAE","#D95F02","#7570B3","#E7298A","#66A61E","#E6AB02","#00CFFF")) +
   geom_text(aes(x=continent, y=label_pos,
       label=scales::comma(samples),
-      color=c(rep('white',3), rep('black',4))),
+      color=c(rep('black',7))),
       fontface='bold') +
     scale_color_manual(values=c('black','white')) +
   theme_bw() +
   labs(x='Continent', y='Human fecal samples') +
   coord_flip() +
-  scale_y_continuous(labels=comma, expand=c(0,4000)) +
+  scale_y_continuous(labels=comma, limits=c(0,85000), expand=c(0, 0)) +
   theme(
     axis.text=element_text(size=11),
     legend.position='none'
@@ -147,14 +156,19 @@ countries_toplot[countries_toplot$X=='?',]$X <- '(unknown)'
 
 panel_c <- ggplot(toplot, aes(x=V1, y=V2, color=countries_toplot$X)) +
   geom_point() +
+  #scale_color_manual(values=c("#AEAEAE","#D95F02","#7570B3","#66A61E","#E6AB02","#00CFFF")) +
+  scale_color_manual(values=c("#AEAEAE","#66A61E","#E6AB02","#00CFFF","#7570B3","#D95F02")) +
   labs(x='tSNE1',y='tSNE2',color='Continent') +
   theme_bw() +
   theme(
-    legend.position='bottom'
+    legend.position='none',
+    axis.text=element_text(size=11)
   )
 
 
-panel_a / (panel_b|panel_c)
+panel_a / (panel_b|panel_c) +
+  plot_annotation(tag_levels = 'A')
+
 
 #TODO: ADD CONTINENT FACET??
 
