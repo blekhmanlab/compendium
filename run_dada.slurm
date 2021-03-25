@@ -15,10 +15,10 @@ cmd=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
 if [[ "$cmd" == *"-SE"* ]]
   then
     echo "Running DADA2 in SINGLE-ENDED MODE"
-    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_forwards.R
+    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2:1.14.0a Rscript ~/shithouse/code/process_forwards.R
   else
     echo "Running DADA2 in paired-end mode"
-    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2 Rscript ~/shithouse/code/process_paired_end.R
+    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt docker://blekhmanlab/dada2:1.14.0a Rscript ~/shithouse/code/process_paired_end.R
 fi
 
 echo "Moving results"
