@@ -7,7 +7,7 @@ from collections import defaultdict
 
 # some projects are going to have problems we don't want to address
 # until later, so leave them out of the list:
-with open('to_ignore.csv') as f:
+with open('/home/blekhman/rabdill/shithouse/code/to_ignore.csv') as f:
     ignore = f.read().splitlines()
 
 progress = defaultdict(lambda: {
