@@ -40,10 +40,7 @@ echo "${PROJECT},trim,end" >> ~/shithouse/activity.csv
 files=$(ls -l /scratch.global/rabdill/bulk/${PROJECT}/trimmed | wc -l)
 mem=16
 case $files in
-[1-2][0-9]) # 29 max
-    mem=8
-    ;;
-[3-9][0-9]) # 99
+[1-9][0-9]) # 99
     mem=16
     ;;
 [1-2][0-9][0-9]) # 299
