@@ -11,14 +11,28 @@ import db
 
 connection = db.Connection()
 
-def load_xml(xmlfile):
+# def _already_recorded():
+#     """
+#     Loads a list of sample IDs for samples that have already been recorded
+#     in the database.
+
+#     Outputs:
+#         - returns a set of strings, each a sample ID
+#     """
+#     search = connection.read("SELECT s.srs FROM samples s")
+#     sample_list = [x[0] for x in search] # each ID is nested inside a tuple of length 1
+#     return set(sample_list)
+
+def load_xml(xmlfile, taxon):
     """
     Loads the "full text XML" exported from a search of BioSamples and adds
     them to the database.
 
     Inputs:
         - xmlfile: String. Path to the file to be read.
+        - taxon: The taxon ID from the NCBI taxonomy browser associated with the samples.
     """
+    print(f'\n\n\n===================\nProcessing XML for taxon {taxon}\n==========\n\n')
     # for counting entries in each field:
     source = defaultdict(int)
     host = defaultdict(int)
@@ -54,7 +68,7 @@ def load_xml(xmlfile):
         #  NOTE: we used to check for BioProject ID here,
         #  but for some reason half the samples don't list a bioproject
         # even if they have one.
-        
+
         # go through all the attributes and tally them
         filterdata = {}
         all_tags = {}
@@ -85,13 +99,14 @@ def load_xml(xmlfile):
                 used_source[key] += 1
                 samplesource = filterdata[key]
                 break
-        
+
         if samplesource is None: continue
         source[samplesource] += 1
-        
+
         # write sample into table
         with connection.db.cursor() as cursor:
-            cursor.execute('INSERT INTO samples (srs, host, source) VALUES (%s, %s, %s);', (sra, samplehost, samplesource))
+            # TODO: What if we've already recorded this sample?
+            cursor.execute('INSERT INTO samples (srs, host, source, taxon) VALUES (%s, %s, %s, %s);', (sra, samplehost, samplesource, taxon))
 
 
         # add all the random tags to the tag table
@@ -106,23 +121,27 @@ def load_xml(xmlfile):
 
     print(f'{len(biosamples)} total samples')
 
-def find_runs(count, per_query=10):
+def find_runs(count, per_query=50):
     """
     Queries the NCBI eUtils API to use sample IDs ("SRS" codes)
     to get information about runs ("SRR" codes) that can then
     be downloaded as FASTQ files.
-    
+
     Inputs:
         - count: int. The upper limit for how many entries to search in total.
         - per_query: int. The number of entries to request in each web request
     """
 
+    # todo = connection.read("""SELECT s.srs FROM samples s
+    #     INNER JOIN acceptable_hosts ah ON ah.host=s.host
+    #     INNER JOIN acceptable_sources asa ON asa.source=s.source
+    #     WHERE ah.keep AND asa.keep
+    #         AND srr IS NULL
+    #     LIMIT %s""", (count,))
     todo = connection.read("""SELECT s.srs FROM samples s
-        INNER JOIN acceptable_hosts ah ON ah.host=s.host
-        INNER JOIN acceptable_sources asa ON asa.source=s.source
-        WHERE ah.keep AND asa.keep
-            AND srr IS NULL
+        WHERE srr IS NULL
         LIMIT %s""", (count,))
+
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
     cursor = 0
 
@@ -164,14 +183,14 @@ def find_runs(count, per_query=10):
         r = requests.get(url)
         try:
             tree = ET.fromstring(r.text)
-        except xml.etree.ElementTree.ParseError:
+        except ET.ParseError:
             print("WARNING: Misformed response from call to eFetch. Skipping.")
             time.sleep(10)
             continue
-        record_data(tree)
+        _record_data(tree)
         time.sleep(1)
 
-def record_data(data):
+def _record_data(data):
     """Parses a response from the efetch endpoint that has info about
     all the samples in the query."""
 
@@ -185,6 +204,10 @@ def record_data(data):
         for x in package.iter('RUN'):
             if 'accession' in x.attrib.keys():
                 tosave['run'] = x.attrib['accession']
+            if 'published' in x.attrib.keys():
+                tosave['pubdate'] = x.attrib['published']
+            if 'total_bases' in x.attrib.keys():
+                tosave['total_bases'] = x.attrib['total_bases']
         for x in package.iter('EXTERNAL_ID'):
             if 'namespace' in x.attrib.keys():
                 if x.attrib['namespace'] == 'BioProject':
@@ -194,7 +217,7 @@ def record_data(data):
             tosave['library_strategy'] = x.text
         for x in package.iter('LIBRARY_SOURCE'):
             tosave['library_source'] = x.text
-        
+
         with connection.db.cursor() as cursor:
             # If there is no SRA run identified, SKIP this entry.
             # Sometimes a sample will have multiple entries, one with
@@ -227,12 +250,24 @@ def record_data(data):
                     SET library_source=%s
                     WHERE srs=%s
                 """, (tosave.get('library_source'), sample))
+            if tosave.get('pubdate') is not None:
+                cursor.execute("""
+                    UPDATE samples
+                    SET pubdate=%s
+                    WHERE srs=%s
+                """, (tosave.get('pubdate'), sample))
+            if tosave.get('total_bases') is not None:
+                cursor.execute("""
+                    UPDATE samples
+                    SET total_bases=%s
+                    WHERE srs=%s
+                """, (tosave.get('total_bases'), sample))
 
 def write_lists(min_samples=10):
     """
     Fetches a list of SRA projects from the local database and generates a list
     of samples for each project.
-    
+
     Inputs:
         - min_samples: int. The minimum number of samples that a project needs to
             have to get a list generated.
@@ -274,11 +309,11 @@ def write_lists(min_samples=10):
             continue
 
         os.mkdir(f'accession_lists/{project}')
-        
+
         with open(f'accession_lists/{project}/SraAccList.txt','w') as f:
             for sample in samples:
                 f.write(f'{sample}\n')
-        
+
         with connection.db.cursor() as cursor:
             sql = """
             UPDATE samples SET exported=true
@@ -295,14 +330,41 @@ def write_lists(min_samples=10):
             )
             """
             cursor.execute(sql, (project, project))
-    
-    with open(f'samples_per_project.csv','w') as f:
+
+    with open(f'samples_per_project.csv','a') as f:
         for x in project_samples:
             f.write(f'{x[0]}, {x[1]}\n')
 
-if __name__ == "__main__":
-    # only command-line param is how many to do in this session
-    #todo = 200 if len(sys.argv) < 2 else sys.argv[1]
-    #find_runs(todo, 50)
+def do_delete():
+    print("starting...")
+    with connection.db.cursor() as cursor:
+        cursor.execute("""
+        DELETE FROM roundtwo.samples
+        WHERE srs IN (
+            SELECT srs FROM roundtwo.samples
+        WHERE taxon='txid1861841'
+        LIMIT 5)
+        """
+        )
+    print("DONE!")
+    exit(0)
 
-    write_lists()
+if __name__ == "__main__":
+    #load_xml('./metadata_paper/txid408170.xml', 'txid408170') # human gut
+    #load_xml('./metadata_paper/txid646099.xml', 'txid646099') # human metagenome
+
+    # load_xml('./metadata_paper/txid433733.xml', 'txid433733') # human lung
+    # load_xml('./metadata_paper/txid447426.xml', 'txid447426') # human oral
+    # load_xml('./metadata_paper/txid539655.xml', 'txid539655') # human skin
+    # load_xml('./metadata_paper/txid1131769.xml', 'txid1131769') # human nasopharyngeal
+    # load_xml('./metadata_paper/txid1632839.xml', 'txid1632839') # human vaginal
+
+    # DOWNLOADED, but not loaded into DB:
+     #load_xml('./metadata_paper/txid749906.xml', 'txid749906') # gut metagenome
+    #load_xml('./metadata_paper/txid1861841.xml', 'txid1861841') # feces metagenome
+
+
+    # only command-line param is how many to do in this session
+    todo = 200 if len(sys.argv) < 2 else sys.argv[1]
+    find_runs(todo)
+    #write_lists()

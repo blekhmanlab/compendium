@@ -22,7 +22,9 @@ class Connection(object):
             print(f'FATAL: {e}')
             exit(1)
         print('Connected!')
+
         self.cursor = self.db.cursor()
+        self.setup_tables()
 
     def _attempt_connect(self, attempts=0):
         """Initiates a connection to the database and tracks retry attempts.
@@ -51,12 +53,12 @@ class Connection(object):
             print(f"Connection to DB failed. Retrying in {config.db['connection']['attempt_pause']} seconds.")
             time.sleep(config.db['connection']['attempt_pause'])
             self._attempt_connect(attempts)
-    
+
     def setup_tables(self):
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS samples (
             srs text PRIMARY KEY, host text, source text, srr text,
             project text, library_strategy text, library_source text,
-            exported bool);""")
+            taxon text, exported bool, pubdate text, total_bases bigint);""")
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS tags (
                 tagid int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -65,8 +67,8 @@ class Connection(object):
                     REFERENCES samples(srs)
             );
         """)
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_hosts (host text PRIMARY KEY, keep bool NOT NULL);")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_sources (source text PRIMARY KEY, keep bool NOT NULL);")
+        #self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_hosts (host text PRIMARY KEY, keep bool NOT NULL);")
+        #self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_sources (source text PRIMARY KEY, keep bool NOT NULL);")
 
     def read(self, query, params=None):
         """Helper function that converts results returned stored in a
