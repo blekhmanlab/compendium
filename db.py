@@ -1,3 +1,4 @@
+import time
 import psycopg2
 import config
 
@@ -67,8 +68,6 @@ class Connection(object):
                     REFERENCES samples(srs)
             );
         """)
-        #self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_hosts (host text PRIMARY KEY, keep bool NOT NULL);")
-        #self.cursor.execute("CREATE TABLE IF NOT EXISTS acceptable_sources (source text PRIMARY KEY, keep bool NOT NULL);")
 
     def read(self, query, params=None):
         """Helper function that converts results returned stored in a

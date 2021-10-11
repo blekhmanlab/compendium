@@ -23,32 +23,19 @@ connection = db.Connection()
 #     sample_list = [x[0] for x in search] # each ID is nested inside a tuple of length 1
 #     return set(sample_list)
 
-def load_xml(xmlfile, taxon):
+def load_xml(taxon, save_samples=True, save_tags=False):
     """
     Loads the "full text XML" exported from a search of BioSamples and adds
     them to the database.
 
     Inputs:
-        - xmlfile: String. Path to the file to be read.
         - taxon: The taxon ID from the NCBI taxonomy browser associated with the samples.
     """
     print(f'\n\n\n===================\nProcessing XML for taxon {taxon}\n==========\n\n')
-    # for counting entries in each field:
-    source = defaultdict(int)
-    host = defaultdict(int)
-    # for tracking which tags were used for the "host" and "source" fields:
-    used_host = defaultdict(int)
-    used_source = defaultdict(int)
 
-    source_tags = [
-            'host_body_product','body_product','host_body_habitat',
-            'sample_type','isolation_source','env_medium'
-        ]
-
-    host_tags = ['host_taxid','host']
     # load the XML file
     print('loading xml...')
-    tree = ET.parse(xmlfile)
+    tree = ET.parse(f'./{taxon}.xml')
     biosamples = tree.getroot()
     print('processing samples!')
     # iterate through each entry in the file
@@ -69,55 +56,26 @@ def load_xml(xmlfile, taxon):
         #  but for some reason half the samples don't list a bioproject
         # even if they have one.
 
-        # go through all the attributes and tally them
-        filterdata = {}
-        all_tags = {}
-        for tag in sample.iter('Attribute'):
-            text = tag.text.lower()
-            if 'harmonized_name' in tag.attrib.keys():
-                if tag.attrib['harmonized_name'] in (source_tags + host_tags):
-                    filterdata[tag.attrib['harmonized_name']] = text
-                else:
+        if save_samples:
+            # write sample into table
+            with connection.db.cursor() as cursor:
+                # TODO: If we've already recorded this sample, it will error
+                cursor.execute('INSERT INTO samples (srs, taxon) VALUES (%s, %s);', (sra, taxon))
+
+        if save_tags:
+            # go through all the attributes and tally them
+            all_tags = {}
+            for tag in sample.iter('Attribute'):
+                text = tag.text.lower()
+                if 'harmonized_name' in tag.attrib.keys():
                     all_tags[tag.attrib['harmonized_name']] = text
-            elif 'attribute_name' in tag.attrib.keys():
-                all_tags[tag.attrib['attribute_name']] = text
-        # Then wade through the tags we found:
-        samplehost = None
-        samplesource = None
-        for key in host_tags:
-            if filterdata.get(key) is not None:
-                used_host[key] += 1
-                samplehost = filterdata[key]
-                break
-        if samplehost is None: continue
-
-        host[samplehost] += 1
-        # iterate through the potential values for "source" and get the first
-        # one that has a value
-        for key in source_tags:
-            if filterdata.get(key) is not None:
-                used_source[key] += 1
-                samplesource = filterdata[key]
-                break
-
-        if samplesource is None: continue
-        source[samplesource] += 1
-
-        # write sample into table
-        with connection.db.cursor() as cursor:
-            # TODO: What if we've already recorded this sample?
-            cursor.execute('INSERT INTO samples (srs, host, source, taxon) VALUES (%s, %s, %s, %s);', (sra, samplehost, samplesource, taxon))
-
-
-        # add all the random tags to the tag table
-        with connection.db.cursor() as cursor:
-            sql = 'INSERT INTO tags (srs, tag, value) VALUES (%s, %s, %s);'
-            params = [(sra, tag, value) for (tag, value) in filterdata.items()]
-            cursor.executemany(sql, params)
-        with connection.db.cursor() as cursor:
-            sql = 'INSERT INTO tags (srs, tag, value) VALUES (%s, %s, %s);'
-            params = [(sra, tag, value) for (tag, value) in all_tags.items()]
-            cursor.executemany(sql, params)
+                elif 'attribute_name' in tag.attrib.keys():
+                    all_tags[tag.attrib['attribute_name']] = text
+            # add all the tags to the tag table
+            with connection.db.cursor() as cursor:
+                sql = 'INSERT INTO tags (srs, tag, value) VALUES (%s, %s, %s);'
+                params = [(sra, tag, value) for (tag, value) in all_tags.items()]
+                cursor.executemany(sql, params)
 
     print(f'{len(biosamples)} total samples')
 
@@ -132,19 +90,14 @@ def find_runs(count, per_query=50):
         - per_query: int. The number of entries to request in each web request
     """
 
-    # todo = connection.read("""SELECT s.srs FROM samples s
-    #     INNER JOIN acceptable_hosts ah ON ah.host=s.host
-    #     INNER JOIN acceptable_sources asa ON asa.source=s.source
-    #     WHERE ah.keep AND asa.keep
-    #         AND srr IS NULL
-    #     LIMIT %s""", (count,))
-    todo = connection.read("""SELECT s.srs FROM samples s
+    todo = connection.read("""
+        SELECT s.srs FROM samples s
         WHERE srr IS NULL
         LIMIT %s""", (count,))
 
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
     cursor = 0
-
+    multiple_runs = 0
     while cursor < len(todo):
         if cursor % (per_query * 100) == 0:
             time.sleep(30) # pause for a bit every 100 requests
@@ -335,36 +288,11 @@ def write_lists(min_samples=10):
         for x in project_samples:
             f.write(f'{x[0]}, {x[1]}\n')
 
-def do_delete():
-    print("starting...")
-    with connection.db.cursor() as cursor:
-        cursor.execute("""
-        DELETE FROM roundtwo.samples
-        WHERE srs IN (
-            SELECT srs FROM roundtwo.samples
-        WHERE taxon='txid1861841'
-        LIMIT 5)
-        """
-        )
-    print("DONE!")
-    exit(0)
 
 if __name__ == "__main__":
-    #load_xml('./metadata_paper/txid408170.xml', 'txid408170') # human gut
-    #load_xml('./metadata_paper/txid646099.xml', 'txid646099') # human metagenome
-
-    # load_xml('./metadata_paper/txid433733.xml', 'txid433733') # human lung
-    # load_xml('./metadata_paper/txid447426.xml', 'txid447426') # human oral
-    # load_xml('./metadata_paper/txid539655.xml', 'txid539655') # human skin
-    # load_xml('./metadata_paper/txid1131769.xml', 'txid1131769') # human nasopharyngeal
-    # load_xml('./metadata_paper/txid1632839.xml', 'txid1632839') # human vaginal
-
-    # DOWNLOADED, but not loaded into DB:
-     #load_xml('./metadata_paper/txid749906.xml', 'txid749906') # gut metagenome
-    #load_xml('./metadata_paper/txid1861841.xml', 'txid1861841') # feces metagenome
-
+    #load_xml('txid408170', save_samples=True, save_tags=False)
+    #load_xml('txid408170', save_samples=False, save_tags=True)
 
     # only command-line param is how many to do in this session
-    todo = 200 if len(sys.argv) < 2 else sys.argv[1]
+    todo = 2000 if len(sys.argv) < 2 else sys.argv[1]
     find_runs(todo)
-    #write_lists()
