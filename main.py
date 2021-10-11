@@ -116,8 +116,13 @@ def find_runs(count, per_query=50):
             exit(1)
 
         r = requests.get(url)
-        tree = ET.fromstring(r.text)
-        found = []
+        try:
+            tree = ET.fromstring(r.text)
+        except:
+            print('ERROR: Couldnt parse response retrieving webenv data. Skipping.')
+            time.sleep(3)
+            continue
+        
         webenv = tree.find('WebEnv')
         if webenv is None:
             print('\n---------\n')
@@ -140,23 +145,28 @@ def find_runs(count, per_query=50):
             print("WARNING: Misformed response from call to eFetch. Skipping.")
             time.sleep(10)
             continue
-        _record_data(tree)
+        multiple_runs += _record_data(tree)
         time.sleep(1)
+    print(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.\n\n")
 
 def _record_data(data):
     """Parses a response from the efetch endpoint that has info about
     all the samples in the query."""
+    multiple_runs = 0
 
     for package in data.findall('EXPERIMENT_PACKAGE'):
         sample = None
-        tosave = {}
+        tosave = {'run': []}
 
         for x in package.iter('SAMPLE'):
             if 'accession' in x.attrib.keys():
                 sample = x.attrib['accession']
         for x in package.iter('RUN'):
             if 'accession' in x.attrib.keys():
-                tosave['run'] = x.attrib['accession']
+                # NOTE: This means we only record one run
+                # per sample, but its possible there is
+                # more than one
+                tosave['run'].append(x.attrib['accession'])
             if 'published' in x.attrib.keys():
                 tosave['pubdate'] = x.attrib['published']
             if 'total_bases' in x.attrib.keys():
@@ -170,6 +180,18 @@ def _record_data(data):
             tosave['library_strategy'] = x.text
         for x in package.iter('LIBRARY_SOURCE'):
             tosave['library_source'] = x.text
+
+        # If we found multiple runs, combine them into a single string
+        if len(tosave['run']) == 0:
+            tosave['run'] = None
+        elif len(tosave['run']) == 1:
+            tosave['run'] = tosave['run'][0]
+        else:
+            print(f"MULTIPLE RUNS! {len(tosave['run'])}")
+            multiple_runs += 1
+            delim = ';'
+            print(f"{sample}: {tosave['run']} ({delim.join(tosave['run'])})")
+            tosave['run'] = delim.join(tosave['run'])
 
         with connection.db.cursor() as cursor:
             # If there is no SRA run identified, SKIP this entry.
@@ -215,6 +237,7 @@ def _record_data(data):
                     SET total_bases=%s
                     WHERE srs=%s
                 """, (tosave.get('total_bases'), sample))
+    return multiple_runs
 
 def write_lists(min_samples=10):
     """
