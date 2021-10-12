@@ -2,7 +2,7 @@
 #SBATCH -t 960 -N 1
 #SBATCH --mem=2G
 #SBATCH -p blekhman
-#SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
+#SBATCH --mail-type=FAIL
 
 echo "${PROJECT},trim,start" >> ~/shithouse/activity.csv
 

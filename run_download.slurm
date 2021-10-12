@@ -2,7 +2,7 @@
 #SBATCH -t 480 -N 1
 #SBATCH --mem=2G
 #SBATCH -p blekhman
-#SBATCH --mail-type=FAIL --mail-user=rabdill@umn.edu
+#SBATCH --mail-type=FAIL
 
 # This script expects a directory matching the project name
 # to be present at ~/shithouse/accession_lists/
