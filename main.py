@@ -91,15 +91,16 @@ def find_runs(count, per_query=50):
     """
 
     todo = connection.read("""
-        SELECT s.srs FROM samples s
+        SELECT srs FROM samples
         WHERE srr IS NULL
         LIMIT %s""", (count,))
 
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
+    print(f'Found {len(todo)} samples to process')
     cursor = 0
     multiple_runs = 0
     while cursor < len(todo):
-        if cursor % (per_query * 100) == 0:
+        if cursor > 0 and cursor % (per_query * 100) == 0:
             time.sleep(30) # pause for a bit every 100 requests
         if cursor % 1000 == 0:
             print(f'COMPLETE: {cursor}')
@@ -114,8 +115,13 @@ def find_runs(count, per_query=50):
             print(url)
             print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
             exit(1)
+        try:
+            r = requests.get(url)
+        except:
+            print('ERROR: Error sending request for webenv data. Skipping.')
+            time.sleep(3)
+            continue
 
-        r = requests.get(url)
         try:
             tree = ET.fromstring(r.text)
         except:
@@ -163,9 +169,6 @@ def _record_data(data):
                 sample = x.attrib['accession']
         for x in package.iter('RUN'):
             if 'accession' in x.attrib.keys():
-                # NOTE: This means we only record one run
-                # per sample, but its possible there is
-                # more than one
                 tosave['run'].append(x.attrib['accession'])
             if 'published' in x.attrib.keys():
                 tosave['pubdate'] = x.attrib['published']
@@ -252,17 +255,15 @@ def write_lists(min_samples=10):
     todo = connection.read("""
         SELECT samplecount.project
         FROM (
-            SELECT project, COUNT(s.srs)
-            FROM SAMPLES s
-            INNER JOIN acceptable_hosts ah ON ah.host=s.host
-            INNER JOIN acceptable_sources asa ON asa.source=s.source
-            WHERE ah.keep AND asa.keep AND s.library_strategy='AMPLICON'
-            AND srr IS NOT NULL AND project IS NOT NULL
-            AND (library_source='METAGENOMIC' OR library_source='GENOMIC')
+            SELECT project, COUNT(srs) AS tally
+            FROM samples
+            WHERE srr IS NOT NULL AND project IS NOT NULL
+                AND library_source IN ('GENOMIC','METAGENOMIC')
+                AND library_strategy='AMPLICON'
             GROUP BY 1
             ORDER BY 2 ASC
         ) AS samplecount
-        WHERE samplecount.count >= %s""", (min_samples,))
+        WHERE samplecount.tally >= %s""", (min_samples,))
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
 
     project_samples = []
@@ -271,12 +272,10 @@ def write_lists(min_samples=10):
         samples = connection.read("""
             SELECT s.srr
             FROM SAMPLES s
-            INNER JOIN acceptable_hosts ah ON ah.host=s.host
-            INNER JOIN acceptable_sources asa ON asa.source=s.source
-            WHERE ah.keep AND asa.keep AND s.library_strategy='AMPLICON'
-            AND srr IS NOT NULL AND project=%s
-            AND (library_source='METAGENOMIC'
-                OR library_source='GENOMIC')""", (project,))
+            WHERE srr IS NOT NULL
+                AND library_source IN ('GENOMIC','METAGENOMIC')
+                AND library_strategy='AMPLICON'
+            AND project=%s""", (project,))
         samples = [x[0] for x in samples]
         project_samples.append((project, len(samples)))
 
@@ -293,19 +292,16 @@ def write_lists(min_samples=10):
         with connection.db.cursor() as cursor:
             sql = """
             UPDATE samples SET exported=true
-            WHERE project=%s AND
-            srr IN (
+            WHERE srr IN (
                 SELECT s.srr
                 FROM SAMPLES s
-                INNER JOIN acceptable_hosts ah ON ah.host=s.host
-                INNER JOIN acceptable_sources asa ON asa.source=s.source
-                WHERE ah.keep AND asa.keep AND s.library_strategy='AMPLICON'
-                AND srr IS NOT NULL AND project=%s
-                AND (library_source='METAGENOMIC'
-                    OR library_source='GENOMIC')
+                WHERE srr IS NOT NULL
+                    AND library_source IN ('GENOMIC','METAGENOMIC')
+                    AND library_strategy='AMPLICON'
+                AND project=%s
             )
             """
-            cursor.execute(sql, (project, project))
+            cursor.execute(sql, (project,))
 
     with open(f'samples_per_project.csv','a') as f:
         for x in project_samples:
@@ -317,5 +313,7 @@ if __name__ == "__main__":
     #load_xml('txid408170', save_samples=False, save_tags=True)
 
     # only command-line param is how many to do in this session
-    todo = 2000 if len(sys.argv) < 2 else sys.argv[1]
-    find_runs(todo)
+    #todo = 2000 if len(sys.argv) < 2 else sys.argv[1]
+    #find_runs(todo, per_query=80)
+    write_lists(min_samples=50)
+
