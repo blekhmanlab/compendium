@@ -17,7 +17,7 @@ fi
 
 echo "${PROJECT},download,start" >> /home/blekhman/shared/compendium/activity.csv
 
-mv /home/blekhman/shared/compendium/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/
+cp -R /home/blekhman/shared/compendium/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/${PROJECT}
 cd /scratch.global/rabdill/bulk/${PROJECT}
 mkdir fastq
 
