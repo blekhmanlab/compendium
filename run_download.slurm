@@ -5,7 +5,7 @@
 #SBATCH --mail-type=FAIL
 
 # This script expects a directory matching the project name
-# to be present at ~/shithouse/accession_lists/
+# to be present at /home/blekhman/shared/compendium/accession_lists/
 # with a file in it called "SraAccList.txt" listing all the samples
 # to be downloaded from SRA.
 
@@ -15,9 +15,9 @@ then
       exit 1
 fi
 
-echo "${PROJECT},download,start" >> ~/shithouse/activity.csv
+echo "${PROJECT},download,start" >> /home/blekhman/shared/compendium/activity.csv
 
-mv ~/shithouse/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/
+mv /home/blekhman/shared/compendium/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/
 cd /scratch.global/rabdill/bulk/${PROJECT}
 mkdir fastq
 
@@ -43,7 +43,7 @@ done
 cd fastq
 ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
 echo "DONE. Submitting trimming job."
-echo "${PROJECT},download,end" >> ~/shithouse/activity.csv
+echo "${PROJECT},download,end" >> /home/blekhman/shared/compendium/activity.csv
 
-cd ~/shithouse/logs
+cd /home/blekhman/shared/compendium/logs
 sbatch --export=PROJECT=${PROJECT} --job-name=${PROJECT}trim -o ${PROJECT}trim.log ../code/run_shi7.slurm

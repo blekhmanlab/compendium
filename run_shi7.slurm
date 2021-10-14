@@ -4,7 +4,7 @@
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
 
-echo "${PROJECT},trim,start" >> ~/shithouse/activity.csv
+echo "${PROJECT},trim,start" >> /home/blekhman/shared/compendium/activity.csv
 
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/results
 mkdir /scratch.global/rabdill/bulk/${PROJECT}/trimmed # for shi7
@@ -26,7 +26,7 @@ cat /scratch.global/rabdill/bulk/${PROJECT}/temp/readlength.raw.txt | uniq -c >>
 # (all this weird formatting is because we have to run shi7 SPECIFICALLY
 #  with python 2, rather than the python 3 that the system defaults to,
 #  because of an outstanding bug)
-cd ~/shithouse/shi7_0.9.9/
+cd /home/blekhman/shared/compendium/shi7_0.9.9/
 echo "Learning shi7 parameters..."
 python2 shi7_learning.py -i /scratch.global/rabdill/bulk/${PROJECT}/fastq -o /scratch.global/rabdill/bulk/${PROJECT}/learnt
 echo "Running shi7..."
@@ -35,7 +35,7 @@ a=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
 $(echo python2 $a --flash False --convert_fasta False --combine_fasta False --output /scratch.global/rabdill/bulk/${PROJECT}/trimmed)
 
 echo "DONE."
-echo "${PROJECT},trim,end" >> ~/shithouse/activity.csv
+echo "${PROJECT},trim,end" >> /home/blekhman/shared/compendium/activity.csv
 
 files=$(ls -l /scratch.global/rabdill/bulk/${PROJECT}/trimmed | wc -l)
 mem=16
@@ -83,5 +83,5 @@ case $files in
 esac
 
 echo "Starting DADA2 run with ${mem} GB of memory."
-cd ~/shithouse/logs
+cd /home/blekhman/shared/compendium/logs
 sbatch --mem=${mem}G --export=PROJECT=${PROJECT} --job-name=${PROJECT}dada -o ${PROJECT}dada.log ../code/run_dada.slurm

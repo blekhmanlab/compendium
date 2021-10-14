@@ -7,7 +7,7 @@ from collections import defaultdict
 
 # some projects are going to have problems we don't want to address
 # until later, so leave them out of the list:
-with open('/home/blekhman/rabdill/shithouse/code/to_ignore.csv') as f:
+with open('/home/blekhman/shared/compendium/code/to_ignore.csv') as f:
     ignore = f.read().splitlines()
 
 progress = defaultdict(lambda: {
@@ -17,7 +17,7 @@ progress = defaultdict(lambda: {
     'archive': []
 })
 
-with open('../activity.csv','r') as f:
+with open('/home/blekhman/shared/compendium/activity.csv','r') as f:
     reader = csv.reader(f)
     for line in reader:
         if len(line) != 3:

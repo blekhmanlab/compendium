@@ -1,9 +1,9 @@
-# shithouse
+# Human Microbiome Compendium
 **Large-scale characterization of the human microbiome using machine learning**
 
 ## Downloading metadata from NCBI
 
-The `main.py` file has multiple functions that accommodate different steps in the process of pulling data out of the Sequence Read Archive and putting it into the shithouse database.
+The `main.py` file has multiple functions that accommodate different steps in the process of pulling data out of the Sequence Read Archive and putting it into the samples database.
 
 * **`load_xml()`:** This loads an XML file **exported from a BioSample search** and puts the sample metadata into the database.
 * **`find_runs()`:** This step uses the sample metadata (*already in the database*) to find *runs* ("SRR" codes), which are the entities actually associated with sequencing data.
@@ -12,19 +12,10 @@ The `main.py` file has multiple functions that accommodate different steps in th
 ## Processing SRA files
 Kicking off the download script should start a chain of jobs that process the whole study:
 ```sh
-cd ~/shithouse/logs
-qsub ../code/download_bulk.pbs -v PROJECT=PRJNA547558
+cd /home/blekhman/shared/compendium/code
+bash start_pipeline.sh PRJNA547558
 ```
-
-Then eyeball the results to make sure everything finished properly:
-
-```sh
-tail PRJNA513489dada.*
-head ../results/PRJNA513489/summary.tsv
-head ../results/PRJNA513489/ASVs_taxonomy.tsv
-```
-
-Then clean up the extra files:
+When it's done, clean up the extra files:
 
 ```sh
 bash ../code/cleanup_project.sh PRJNA493625
