@@ -18,18 +18,21 @@ bash start_pipeline.sh PRJNA547558
 When it's done, clean up the extra files:
 
 ```sh
-bash ../code/cleanup_project.sh PRJNA493625
+bash cleanup_project.sh PRJNA493625
 ```
 
 You can check on projects that got stalled in the pipeline by running:
 ```sh
-python3 ../code/review_activites.py
+python3 review_activites.py
 ```
 
 ## Troubleshooting
-If DADA2 fails with
+
+1. If DADA2 fails with
 ```
 Error in filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads,  :
   Some input files do not exist.
 ```
 Check on the file at `$PROJECT/learnt/shi7_cmd.sh`. If it was run with the `-SE` flag, the data probably isn't paired-end but should be looked at more closely.
+
+2. If a high percentage of reads were removed by the "remove chimeras" step, it probably means the primers were still attached to the reads and the trimming step didn't catch them. Flag this and we can return to it later.

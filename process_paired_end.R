@@ -3,7 +3,7 @@
 library(dada2)
 packageVersion("dada2")
 
-setwd('/mnt/trimmed')
+setwd('/mnt/fastq')
 
 log <- function(message) print(paste(date(), message))
 
@@ -12,9 +12,9 @@ log <- function(message) print(paste(date(), message))
 samples <- scan("../samples.txt", what="character")
 
 # one holding the file names of all the forward reads
-forward_reads <- paste0(samples, ".R1.fq")
+forward_reads <- paste0(samples, "_1.fastq")
 # and one with the reverse
-reverse_reads <- paste0(samples, ".R2.fq")
+reverse_reads <- paste0(samples, "_2.fastq")
 # and variables holding file names for the forward and reverse
 # filtered reads we're going to generate below
 filtered_forward_reads <- paste0("../intermediate/", samples, ".R1.filtered.fastq.gz")
@@ -34,8 +34,8 @@ filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
                               truncQ=0, rm.phix=TRUE, multithread=4,
                               verbose=TRUE)
 
-# saveRDS(filtered_out, '../temp/filtered_out.rds')
-# filtered_out <- readRDS('../temp/filtered_out.rds')
+# saveRDS(filtered_out, 'filtered_out.rds')
+#filtered_out <- readRDS('filtered_out.rds')
 
 #########################
 # Building error models
@@ -54,42 +54,34 @@ pdf('../temp/reverse_error_model.pdf')
 plotErrors(err_reverse_reads, nominalQ=TRUE)
 dev.off()
 
-# saveRDS(err_forward_reads, '../temp/err_forward_reads.rds')
-# saveRDS(err_reverse_reads, '../temp/err_reverse_reads.rds')
-# err_forward_reads <- readRDS('../temp/err_forward_reads.rds')
-# err_reverse_reads <- readRDS('../temp/err_reverse_reads.rds')
-
-
-# Dereplicate identical reads
-log('Dereplicating...')
-derep_forward <- derepFastq(filtered_forward_reads, verbose=TRUE)
-names(derep_forward) <- samples # the sample names in these objects are initially the file names of the samples, this sets them to the sample names for the rest of the workflow
-derep_reverse <- derepFastq(filtered_reverse_reads, verbose=TRUE)
-names(derep_reverse) <- samples
-
-# saveRDS(derep_forward, '../temp/derep_forward.rds')
-# saveRDS(derep_reverse, '../temp/derep_reverse.rds')
-# derep_forward <- readRDS('../temp/derep_reverse.rds')
-# derep_reverse <- readRDS('../temp/derep_reverse.rds')
+# saveRDS(err_forward_reads, 'err_forward_reads.rds')
+# saveRDS(err_reverse_reads, 'err_reverse_reads.rds')
+#err_forward_reads <- readRDS('err_forward_reads.rds')
+#err_reverse_reads <- readRDS('err_reverse_reads.rds')
 
 #########################
 # Generate count table
 #########################
-log('Processing forward reads...')
-dada_forward <- dada(derep_forward, err=err_forward_reads, multithread=TRUE)
-log('Processing reverse reads...')
-dada_reverse <- dada(derep_reverse, err=err_reverse_reads, multithread=TRUE)
+mergers <- vector("list", length(samples))
+names(mergers) <- samples
 
-# saveRDS(dada_forward, '../temp/dada_forward.rds')
-# saveRDS(dada_reverse, '../temp/dada_reverse.rds')
-# dada_forward <- readRDS('../temp/dada_forward.rds')
-# dada_reverse <- readRDS('../temp/dada_reverse.rds')
+ddF <- vector("list", length(samples))
+names(ddF) <- samples
+ddR <- vector("list", length(samples))
+names(ddR) <- samples
 
-log('Merging reads...')
-merged_amplicons <- mergePairs(dada_forward, derep_forward, dada_reverse,
-                               derep_reverse, trimOverhang=TRUE, minOverlap=12)
+for(sam in samples) {
+  cat("Processing:", sam, "\n")
+  derepF <- derepFastq(paste("../intermediate/", sam, ".R1.filtered.fastq.gz", sep=""))
+  ddF[[sam]] <- dada(derepF, err=err_forward_reads, multithread=TRUE)
+  derepR <- derepFastq(paste("../intermediate/", sam, ".R2.filtered.fastq.gz", sep=""))
+  ddR[[sam]] <- dada(derepR, err=err_reverse_reads, multithread=TRUE)
+  merger <- mergePairs(ddF[[sam]], derepF, ddR[[sam]], derepR)
+  mergers[[sam]] <- merger
+}
+rm(derepF); rm(derepR)
 
-seqtab <- makeSequenceTable(merged_amplicons)
+seqtab <- makeSequenceTable(mergers)
 
 # Get rid of really short sequences that can't practically be used
 # to assign taxonomy:
@@ -109,8 +101,8 @@ getN <- function(x) sum(getUniques(x))
 print('Calculating summary stats...')
 # making a little table
 summary_tab <- data.frame(row.names=samples, dada2_input=filtered_out[,1],
-                          filtered=filtered_out[,2], dada_f=sapply(dada_forward, getN),
-                          dada_r=sapply(dada_reverse, getN), merged=sapply(merged_amplicons, getN),
+                          filtered=filtered_out[,2], dada_f=sapply(ddF, getN),
+                          dada_r=sapply(ddR, getN), merged=sapply(mergers, getN),
                           nonchim=rowSums(seqtab.nochim),
                           final_perc_reads_retained=round(rowSums(seqtab.nochim)/filtered_out[,1]*100, 1))
 
@@ -125,7 +117,7 @@ saveRDS(seqtab.nochim, '../asv.rds')
 log('ASVs recorded.')
 
 log('Assigning taxonomy...')
-taxa <- assignTaxonomy(seqtab.nochim, "~/silva_nr_v138_train_set.fa.gz", multithread=8, tryRC=T)
+taxa <- assignTaxonomy(seqtab.nochim, "/code/silva_nr99_v138_train_set.fa.gz", multithread=8, tryRC=T)
 
 asv_seqs <- colnames(seqtab.nochim)
 asv_headers <- vector(dim(seqtab.nochim)[2], mode="character")

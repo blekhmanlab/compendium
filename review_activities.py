@@ -5,6 +5,12 @@
 import csv
 from collections import defaultdict
 
+tasks = [
+    'download',
+    #'trim',
+    'dada',
+    'archive'
+]
 # some projects are going to have problems we don't want to address
 # until later, so leave them out of the list:
 with open('/home/blekhman/shared/compendium/code/to_ignore.csv') as f:
@@ -12,7 +18,6 @@ with open('/home/blekhman/shared/compendium/code/to_ignore.csv') as f:
 
 progress = defaultdict(lambda: {
     'download': [],
-    'trim': [],
     'dada': [],
     'archive': []
 })
@@ -30,7 +35,7 @@ with open('/home/blekhman/shared/compendium/activity.csv','r') as f:
 to_archive = []
 for study in progress.keys():
     if study in ignore: continue
-    for task in ['download','trim','dada','archive']:
+    for task in tasks:
         if 'end' not in progress[study][task]:
             if 'start' not in progress[study][task]:
                 if task=='archive':
