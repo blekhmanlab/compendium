@@ -10,15 +10,15 @@ echo "${PROJECT},dada,start" >> /home/blekhman/shared/compendium/activity.csv
 
 module load singularity
 
-cmd=$(cat /scratch.global/rabdill/bulk/${PROJECT}/learnt/shi7_cmd.sh)
+filecount=$(ls -l /scratch.global/rabdill/bulk/${PROJECT}/fastq/*_2.fastq | wc -l)
 
-if [[ "$cmd" == *"-SE"* ]]
+if [[ $filecount -gt 0 ]]
   then
-    echo "Running DADA2 in SINGLE-ENDED MODE"
-    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt --bind /home/blekhman/shared/compendium/code:/code docker://blekhmanlab/dada2:1.14.0a Rscript /code/process_forwards.R
-  else
     echo "Running DADA2 in paired-end mode"
     singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt --bind /home/blekhman/shared/compendium/code:/code docker://blekhmanlab/dada2:1.14.0a Rscript /code/process_paired_end.R
+  else
+    echo "Running DADA2 in SINGLE-ENDED MODE"
+    singularity exec --bind /scratch.global/rabdill/bulk/${PROJECT}:/mnt --bind /home/blekhman/shared/compendium/code:/code docker://blekhmanlab/dada2:1.14.0a Rscript /code/process_forwards.R
 fi
 
 echo "Moving results"
