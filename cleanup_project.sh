@@ -2,10 +2,10 @@
 
 head /home/blekhman/shared/compendium/results/${1}/ASVs_taxonomy.tsv
 head /home/blekhman/shared/compendium/results/${1}/summary.tsv
-echo "\nClean up project ${1}? Type one of the following options."
-echo "\n\ny = 'Yes, we want to include this, clean up the extra files.'"
+echo "\\nClean up project ${1}? Type one of the following options."
+echo "\\n\\ny = 'Yes, we want to include this, clean up the extra files.'"
 echo "n = 'Nevermind, leave everything where it is.'"
-echo "DISCARD = 'Something is wrong with this, GET RID OF IT PERMANENTLY.'\n"
+echo "DISCARD = 'Something is wrong with this, GET RID OF IT PERMANENTLY.'\\n"
 read doit
 
 if [[ "$doit" == "DISCARD" ]]; then
@@ -36,12 +36,7 @@ echo "${1},archive,start" >> /home/blekhman/shared/compendium/activity.csv
 
 cd /scratch.global/rabdill/bulk/${1}
 rm -rf temp
-mv trimmed/shi7.log .
-mv learnt/shi7_learning.log .
-mv learnt/shi7_cmd.sh .
-rm -rf trimmed
 rm -rf intermediate
-rm -rf learnt
 rm -rf fastq
 rm -rf results
 cd ..
