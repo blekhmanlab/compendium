@@ -3,7 +3,7 @@
 library(dada2)
 packageVersion("dada2")
 
-setwd('/mnt/trimmed')
+setwd('/mnt/fastq')
 
 log <- function(message) print(paste(date(), message))
 
@@ -12,7 +12,7 @@ log <- function(message) print(paste(date(), message))
 samples <- scan("../samples.txt", what="character")
 
 # one holding the file names of all the forward reads
-forward_reads <- paste0(samples, ".1.fq")
+forward_reads <- paste0(samples, "_1.fastq")
 filtered_forward_reads <- paste0("../intermediate/", samples, ".R1.filtered.fastq.gz")
 
 
@@ -97,7 +97,7 @@ saveRDS(seqtab.nochim, '../asv.rds')
 log('ASVs recorded.')
 
 log('Assigning taxonomy...')
-taxa <- assignTaxonomy(seqtab.nochim, "~/silva_nr_v138_train_set.fa.gz", multithread=8, tryRC=T)
+taxa <- assignTaxonomy(seqtab.nochim, "/code/silva_nr99_v138_train_set.fa.gz", multithread=8, tryRC=T)
 
 asv_seqs <- colnames(seqtab.nochim)
 asv_headers <- vector(dim(seqtab.nochim)[2], mode="character")

@@ -2,9 +2,10 @@
 
 head /home/blekhman/shared/compendium/results/${1}/ASVs_taxonomy.tsv
 head /home/blekhman/shared/compendium/results/${1}/summary.tsv
-echo "Clean up project ${1}? Type one of the following options."
-echo "y = 'Yes, we want to include this, clean up the extra files.'"
-echo "DISCARD = 'Something is wrong with this, GET RID OF IT PERMANENTLY.'"
+echo "\nClean up project ${1}? Type one of the following options."
+echo "\n\ny = 'Yes, we want to include this, clean up the extra files.'"
+echo "n = 'Nevermind, leave everything where it is.'"
+echo "DISCARD = 'Something is wrong with this, GET RID OF IT PERMANENTLY.'\n"
 read doit
 
 if [[ "$doit" == "DISCARD" ]]; then
