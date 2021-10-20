@@ -21,6 +21,8 @@ cp -R /home/blekhman/shared/compendium/accession_lists/${PROJECT} /scratch.globa
 cd /scratch.global/rabdill/bulk/${PROJECT}
 mkdir fastq
 mkdir temp
+mkdir results
+mkdir intermediate
 
 #module load aspera
 module load sratoolkit # currently 2.8.2
