@@ -1,6 +1,6 @@
 #!/bin/sh
 
-rm -rf /home/blekhman/shared/compendium/results/${PROJECT}
+rm -rf /home/blekhman/shared/compendium/results/${1}
 rm /scratch.global/rabdill/bulk/${1}/results/*
 rm /scratch.global/rabdill/bulk/${1}/temp/*
 rm /scratch.global/rabdill/bulk/${1}/intermediate/*
