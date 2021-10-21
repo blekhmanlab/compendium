@@ -29,10 +29,20 @@ filtered_reverse_reads <- paste0("../intermediate/", samples, ".R2.filtered.fast
 # it does a few DADA2-specific things (throwing out 'N' bases, for example)
 # that become important later.
 log('Filtering...')
+
+trimLeft = 0
+trimRight = 0
+args = commandArgs(trailingOnly=TRUE)
+if (length(args)) > 0 {
+  if (args[1] == 'trim') {
+    trimLeft = 24
+    trimRight = 24
+  }
+}
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
                               reverse_reads, filtered_reverse_reads,
                               truncQ=0, rm.phix=TRUE, multithread=4,
-                              verbose=TRUE)
+                              verbose=TRUE, trimLeft=trimLeft, trimRight=trimRight)
 
 # saveRDS(filtered_out, 'filtered_out.rds')
 #filtered_out <- readRDS('filtered_out.rds')
