@@ -92,10 +92,15 @@ getN <- function(x) sum(getUniques(x))
 
 print('Calculating summary stats...')
 # making a little table
-summary_tab <- data.frame(row.names=samples, dada2_input=filtered_out[,1],
-                          filtered=filtered_out[,2], dada_f=sapply(dada_forward, getN),
-                          nonchim=rowSums(seqtab.nochim),
-                          final_perc_reads_retained=round(rowSums(seqtab.nochim)/filtered_out[,1]*100, 1))
+forwd_val <- sapply(dada_forward, getN)
+nochim_val <- rowSums(seqtab.nochim)
+chim_removed_val <- round(((forwd_val-nochim_val)/filtered_out[,1])*100, 1)
+
+summary_tab <- data.frame(row.names=samples, dinput=filtered_out[,1],
+                          filter=filtered_out[,2], forwd=forwd_val,
+                          nonchim=nochim_val,
+                          chim_perc=chim_removed_val,
+                          retained_perc=round((100*nochim_val)/filtered_out[,1], 1))
 
 # OUTPUT
 log('Writing summary output...')
