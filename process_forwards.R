@@ -28,7 +28,7 @@ log('Filtering...')
 trimLeft = 0
 trimRight = 0
 args = commandArgs(trailingOnly=TRUE)
-if (length(args)) > 0 {
+if (length(args) > 0) {
   if (args[1] == 'trim') {
     trimLeft = 24
     trimRight = 24
