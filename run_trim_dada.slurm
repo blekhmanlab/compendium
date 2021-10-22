@@ -6,7 +6,7 @@
 
 # PROCESSING with DADA2
 
-echo "${PROJECT},dada,start" >> /home/blekhman/shared/compendium/activity.csv
+echo "${PROJECT},trimdada,start" >> /home/blekhman/shared/compendium/activity.csv
 
 module load singularity
 
@@ -25,4 +25,4 @@ echo "Moving results"
 cp -R /scratch.global/rabdill/bulk/${PROJECT}/results /home/blekhman/shared/compendium/results/${PROJECT}
 echo "DONE"
 
-echo "${PROJECT},dada,end" >> /home/blekhman/shared/compendium/activity.csv
+echo "${PROJECT},trimdada,end" >> /home/blekhman/shared/compendium/activity.csv

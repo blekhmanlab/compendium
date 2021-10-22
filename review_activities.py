@@ -7,7 +7,7 @@ from collections import defaultdict
 
 tasks = [
     'download',
-    #'trim',
+    'trimdada',
     'dada',
     'archive'
 ]
@@ -19,6 +19,7 @@ with open('/home/blekhman/shared/compendium/code/to_ignore.csv') as f:
 progress = defaultdict(lambda: {
     'download': [],
     'dada': [],
+    'trimdada': [],
     'archive': []
 })
 
@@ -40,6 +41,8 @@ for study in progress.keys():
             if 'start' not in progress[study][task]:
                 if task=='archive':
                     to_archive.append(study)
+                elif task == 'trimdada':
+                    continue # Not every project needs this
                 else:
                     print(f'{study} never started {task}')
                 break
