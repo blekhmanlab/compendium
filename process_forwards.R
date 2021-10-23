@@ -94,10 +94,12 @@ print('Calculating summary stats...')
 # making a little table
 forwd_val <- sapply(dada_forward, getN)
 nochim_val <- rowSums(seqtab.nochim)
-chim_removed_val <- round(((forwd_val-nochim_val)/filtered_out[,1])*100, 1)
+length_val <- sapply(seqtab.noshort, getN)
+chim_removed_val <- round(((length_val-nochim_val)/forwd_val)*100, 1)
 
-summary_tab <- data.frame(row.names=samples, dinput=filtered_out[,1],
+summary_tab <- data.frame(dinput=filtered_out[,1],
                           filter=filtered_out[,2], forwd=forwd_val,
+                          length=length_val,
                           nonchim=nochim_val,
                           chim_perc=chim_removed_val,
                           retained_perc=round((100*nochim_val)/filtered_out[,1], 1))
