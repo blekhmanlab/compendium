@@ -1,5 +1,5 @@
 #!/bin/bash -e
-#SBATCH -t 480 -N 1
+#SBATCH -t 24:00:00 -N 1
 #SBATCH --mem=2G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
@@ -40,8 +40,8 @@ done
 # create a "samples" file listing ONLY the samples that were successfully processed
 cd fastq
 ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
-echo "DONE. Submitting trimming job."
+echo "DONE. Submitting DADA2 job."
 echo "${PROJECT},download,end" >> /home/blekhman/shared/compendium/activity.csv
 
 cd /home/blekhman/shared/compendium/logs
-sbatch --export=PROJECT=${PROJECT} --job-name=${PROJECT}trim -o ${PROJECT}trim.log ../code/run_shi7.slurm
+sbatch --export=PROJECT=${PROJECT} --job-name=${PROJECT}dada -o ${PROJECT}dada.log ../code/run_dada.slurm

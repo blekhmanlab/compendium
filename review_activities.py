@@ -7,8 +7,8 @@ from collections import defaultdict
 
 tasks = [
     'download',
-    'trimdada',
     'dada',
+    'trimdada',
     'archive'
 ]
 # some projects are going to have problems we don't want to address
