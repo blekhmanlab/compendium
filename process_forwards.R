@@ -107,7 +107,7 @@ summary_tab <- data.frame(dinput=filtered_out[,1],
 # OUTPUT
 log('Writing summary output...')
 write.table(summary_tab, "../results/summary.tsv",
-            sep="\t", quote=F, col.names=NA)
+            sep="\t", quote=F, col.names=NA, row.names = FALSE)
 log('Writing ASV table...')
 write.table(seqtab.nochim, "../results/ASV.tsv",
             sep="\t", quote=F, col.names=NA)
