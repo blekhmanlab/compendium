@@ -112,9 +112,7 @@ print('Calculating summary stats...')
 # making a little table
 merged_val <- sapply(mergers, getN)
 nochim_val <- rowSums(seqtab.nochim)
-# TODO: calculate length value here and replace it in the
-# denominator of the chimera percent
-length_val <- sapply(seqtab.noshort, getN)
+length_val <- rowSums(seqtab.noshort)
 chim_removed_val <- round(((length_val-nochim_val)/merged_val)*100, 1)
 
 summary_tab <- data.frame(dinput=filtered_out[,1],
