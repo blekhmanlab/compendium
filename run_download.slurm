@@ -34,12 +34,14 @@ module load sratoolkit # currently 2.8.2
 # and then export all the accession numbers to a file
 # called SraAccList.txt
 
+echo "Fetching SRA files"
 prefetch --option-file SraAccList.txt
 
+echo "Converting files to FASTQ"
 for sample in $(cat SraAccList.txt)
 do
     echo "On sample: $sample"
-    fastq-dump -I --split-files $sample -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
+    fastq-dump -v -I --split-files $sample -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
 done
 
 # create a "samples" file listing ONLY the samples that were successfully processed
