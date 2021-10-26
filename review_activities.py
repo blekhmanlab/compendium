@@ -47,6 +47,12 @@ for study in progress.keys():
                     print(f'{study} never started {task}')
                 break
             else:
+                # If a task started but didn't finish
+                if task == 'dada':
+                    # if the dada task didn't finish, but re-running
+                    # it as trimdada DID finish, chill out
+                    if 'end' in progress[study]['trimdada']:
+                        continue
                 print(f'{study} started {task} but did not finish')
                 break
 if len(to_archive) > 0:
