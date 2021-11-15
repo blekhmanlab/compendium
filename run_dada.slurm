@@ -1,5 +1,5 @@
 #!/bin/bash -e
-#SBATCH -t 3000 -N 1
+#SBATCH -t 8:00:00 -N 1
 #SBATCH --mem=48G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
