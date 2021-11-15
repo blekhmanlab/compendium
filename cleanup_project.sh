@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+if [ "$#" -ne 1 ]; then
+    echo "Illegal number of parameters"
+    exit 1
+fi
+
 head /home/blekhman/shared/compendium/results/${1}/ASVs_taxonomy.tsv
 head /home/blekhman/shared/compendium/results/${1}/summary.tsv
 echo -e "\nClean up project ${1}? Type one of the following options."
