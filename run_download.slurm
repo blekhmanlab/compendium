@@ -3,6 +3,7 @@
 #SBATCH --mem=2G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
+#SBATCH --mail-user=rabdill@umn.edu
 
 # This script expects a directory matching the project name
 # to be present at /home/blekhman/shared/compendium/accession_lists/

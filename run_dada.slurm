@@ -3,6 +3,7 @@
 #SBATCH --mem=48G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
+#SBATCH --mail-user=rabdill@umn.edu
 
 # PROCESSING with DADA2
 
