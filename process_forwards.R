@@ -56,24 +56,20 @@ dev.off()
 # saveRDS(err_forward_reads, '../temp/err_forward_reads.rds')
 # err_forward_reads <- readRDS('../temp/err_forward_reads.rds')
 
-# Dereplicate identical reads
-log('Dereplicating...')
-derep_forward <- derepFastq(filtered_forward_reads, verbose=TRUE)
-names(derep_forward) <- samples # the sample names in these objects are initially the file names of the samples, this sets them to the sample names for the rest of the workflow
-
-# saveRDS(derep_forward, '../temp/derep_forward.rds')
-# derep_forward <- readRDS('../temp/derep_reverse.rds')
-
 #########################
 # Generate count table
 #########################
-log('Processing forward reads...')
-dada_forward <- dada(derep_forward, err=err_forward_reads, multithread=TRUE)
+ddF <- vector("list", length(samples))
+names(ddF) <- samples
 
-# saveRDS(dada_forward, '../temp/dada_forward.rds')
-# dada_forward <- readRDS('../temp/dada_forward.rds')
+for(sam in samples) {
+  cat("Processing:", sam, "\n")
+  derepF <- derepFastq(paste("../intermediate/", sam, ".R1.filtered.fastq.gz", sep=""))
+  ddF[[sam]] <- dada(derepF, err=err_forward_reads, multithread=TRUE)
+}
+rm(derepF)
 
-seqtab <- makeSequenceTable(dada_forward)
+seqtab <- makeSequenceTable(ddF)
 
 # Get rid of really short sequences that can't practically be used
 # to assign taxonomy:
