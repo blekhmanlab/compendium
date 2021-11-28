@@ -7,6 +7,7 @@ from collections import defaultdict
 
 tasks = [
     'download',
+    'unpack',
     'dada',
     'trimdada',
     'archive'
@@ -18,6 +19,7 @@ with open('/home/blekhman/shared/compendium/code/to_ignore.csv') as f:
 
 progress = defaultdict(lambda: {
     'download': [],
+    'unpack': [],
     'dada': [],
     'trimdada': [],
     'archive': []

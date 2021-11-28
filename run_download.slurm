@@ -1,5 +1,5 @@
 #!/bin/bash -e
-#SBATCH -t 480 -N 1
+#SBATCH -t 12:00:00 -N 1
 #SBATCH --mem=2G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
@@ -38,18 +38,8 @@ module load sratoolkit # currently 2.8.2
 echo "Fetching SRA files"
 prefetch --option-file SraAccList.txt
 
-echo "Converting files to FASTQ"
-for sample in $(cat SraAccList.txt)
-do
-    echo "On sample: $sample"
-    fastq-dump -v -I --split-files $sample -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
-done
-
-# create a "samples" file listing ONLY the samples that were successfully processed
-cd fastq
-ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
-echo "DONE. Submitting DADA2 job."
+echo "DONE. Submitting unpacking job."
 echo "${PROJECT},download,end" >> /home/blekhman/shared/compendium/activity.csv
 
 cd /home/blekhman/shared/compendium/logs
-sbatch --export=PROJECT=${PROJECT} --job-name=${PROJECT}dada -o ${PROJECT}dada.log ../code/run_dada.slurm
+sbatch --export=PROJECT=$PROJECT --job-name=${PROJECT}unpack -o ${PROJECT}unpack.log ../code/download_unpack.slurm
