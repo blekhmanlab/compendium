@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH -t 12:00:00 -N 1
-#SBATCH --mem=2G
+#SBATCH --mem=1G
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=rabdill@umn.edu

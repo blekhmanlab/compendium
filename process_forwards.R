@@ -88,7 +88,7 @@ getN <- function(x) sum(getUniques(x))
 
 print('Calculating summary stats...')
 # making a little table
-forwd_val <- sapply(dada_forward, getN)
+forwd_val <- sapply(ddF, getN)
 nochim_val <- rowSums(seqtab.nochim)
 length_val <- rowSums(seqtab.noshort)
 chim_removed_val <- round(((length_val-nochim_val)/forwd_val)*100, 1)
