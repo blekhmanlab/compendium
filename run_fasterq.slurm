@@ -21,12 +21,10 @@ echo "${PROJECT},download,start" >> /home/blekhman/shared/compendium/activity.cs
 
 cp -R /home/blekhman/shared/compendium/accession_lists/${PROJECT} /scratch.global/rabdill/bulk/${PROJECT}
 cd /scratch.global/rabdill/bulk/${PROJECT}
-mkdir fastq
-mkdir temp
-mkdir results
-mkdir intermediate
+mkdir -p temp
+mkdir -p results
+mkdir -p intermediate
 
-#module load aspera
 module load sratoolkit/2.10.4 # currently 2.8.2
 
 echo "Fetching SRA files"
