@@ -37,7 +37,7 @@ do
     else
         fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
     fi
-    num=$num+1
+    num=$(($num + 1))
 done
 
 echo "DONE. Submitting dada job."
