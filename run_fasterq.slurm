@@ -32,7 +32,11 @@ num=1
 for sample in $(cat SraAccList.txt)
 do
     echo "On sample ${num}: $sample"
-    fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
+    if [[ -f "/scratch.global/rabdill/bulk/${PROJECT}/fastq/${sample}_1.fastq" ]]; then
+        echo "Already found! Continuing."
+    else
+        fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
+    fi
     num=$num+1
 done
 
