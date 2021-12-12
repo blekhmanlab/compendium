@@ -1,5 +1,5 @@
 #!/bin/bash -e
-#SBATCH -t 20:00:00 -N 1
+#SBATCH -t 24:00:00 -N 1
 #SBATCH --mem=40G
 #SBATCH --ntasks=8
 #SBATCH -p blekhman
