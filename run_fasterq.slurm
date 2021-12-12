@@ -30,10 +30,12 @@ mkdir intermediate
 module load sratoolkit/2.10.4 # currently 2.8.2
 
 echo "Fetching SRA files"
+num=1
 for sample in $(cat SraAccList.txt)
 do
-    echo "On sample: $sample"
+    echo "On sample ${num}: $sample"
     fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
+    num=$num+1
 done
 
 echo "DONE. Submitting dada job."
