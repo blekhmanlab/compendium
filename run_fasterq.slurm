@@ -39,9 +39,15 @@ do
 done
 
 echo "DONE. Submitting dada job."
+
 echo "${PROJECT},download,end" >> /home/blekhman/shared/compendium/activity.csv
+
+cd fastq
+ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
+
 echo "${PROJECT},unpack,start" >> /home/blekhman/shared/compendium/activity.csv
 echo "${PROJECT},unpack,end" >> /home/blekhman/shared/compendium/activity.csv
+
 
 cd /home/blekhman/shared/compendium/logs
 sbatch --export=PROJECT=${PROJECT} --job-name=${PROJECT}dada -o ${PROJECT}dada.log ../code/run_dada.slurm
