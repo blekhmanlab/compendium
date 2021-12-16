@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH -t 24:00:00 -N 1
-#SBATCH --mem=40G
+#SBATCH --mem=36G
 #SBATCH --ntasks=8
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL
@@ -9,6 +9,7 @@
 # PROCESSING with DADA2
 
 echo "${PROJECT},dada,start" >> /home/blekhman/shared/compendium/activity.csv
+echo "${PROJECT},20" >> /home/blekhman/shared/compendium/code/dada_times.csv
 
 module load singularity
 
