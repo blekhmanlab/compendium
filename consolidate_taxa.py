@@ -1,9 +1,17 @@
 from collections import defaultdict
+import os
 import csv
 
-projects = ['PRJDB5310', 'PRJDB5316', 'PRJDB5420']
 
-for project in projects:
+all_projects = os.listdir('../results')
+done = os.listdir('../results/taxa_files')
+done = [x.split('_')[0] for x in done] # trim off filenames
+
+todo = [x for x in all_projects if x not in done]
+
+for project in todo:
+    if project[1:3] != 'PRJ':
+        continue
     print(f'Starting project {project}')
     asv_taxa = {}
     unique_taxa = []

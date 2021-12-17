@@ -25,8 +25,6 @@ mkdir -p temp
 mkdir -p results
 mkdir -p intermediate
 
-module load sratoolkit/2.10.4 # currently 2.8.2
-
 echo "Fetching SRA files"
 num=1
 for sample in $(cat SraAccList.txt)
