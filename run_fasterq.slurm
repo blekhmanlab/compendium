@@ -35,7 +35,7 @@ do
     if [[ -f "/scratch.global/rabdill/bulk/${PROJECT}/fastq/${sample}_1.fastq" ]]; then
         echo "Already found! Continuing."
     else
-        /home/blekhman/shared/compendium/code/sratoolkit.2.11.3-centos_linux64/bin/fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq
+        /home/blekhman/shared/compendium/code/sratoolkit.2.11.3-centos_linux64/bin/fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq || echo "SOMETHING WENT WRONG HERE. Continuing..."
     fi
     num=$(($num + 1))
 done
