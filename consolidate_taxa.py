@@ -10,7 +10,8 @@ done = [x.split('_')[0] for x in done] # trim off filenames
 todo = [x for x in all_projects if x not in done]
 
 for project in todo:
-    if project[1:3] != 'PRJ':
+    if project[0:2] != 'PRJ':
+        print(f'Entry {project} doesnt match pattern. Skipping.')
         continue
     print(f'Starting project {project}')
     asv_taxa = {}
