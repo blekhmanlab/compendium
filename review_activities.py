@@ -32,7 +32,8 @@ with open('/home/blekhman/shared/compendium/activity.csv','r') as f:
             print("Exiting.")
             exit(1)
         project, task, event = line
-        progress[project][task].append(event)
+        if task in tasks:
+            progress[project][task].append(event)
 to_archive = []
 for study in progress.keys():
     if study in ignore: continue
