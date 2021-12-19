@@ -5,6 +5,9 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
+# Removing reverse reads
+bash remove_reverse_reads.sh $1
+
 rm -rf /home/blekhman/shared/compendium/results/${1}
 rm /scratch.global/rabdill/bulk/${1}/results/*
 rm /scratch.global/rabdill/bulk/${1}/temp/*
