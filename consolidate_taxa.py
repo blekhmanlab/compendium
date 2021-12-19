@@ -18,7 +18,7 @@ for project in todo:
     unique_taxa = []
     print('  Loading taxonomy data')
     # load the taxonomic assignments for each ASV
-    with open(f'results/{project}/ASVs_taxonomy.tsv', 'r') as f:
+    with open(f'../results/{project}/ASVs_taxonomy.tsv', 'r') as f:
         reader = csv.reader(f, dialect='excel-tab')
         next(reader) # skip the header
         for row in reader:
@@ -30,7 +30,7 @@ for project in todo:
     # load the data
     subjectdata = defaultdict(dict)
     print('  Loading count data')
-    with open(f'results/{project}/ASVs_counts.tsv', 'r') as f:
+    with open(f'../results/{project}/ASVs_counts.tsv', 'r') as f:
         reader = csv.reader(f, dialect='excel-tab')
         subjects = next(reader)[1:] # get (ordered) list of subjects
         for row in reader:
@@ -38,7 +38,7 @@ for project in todo:
                 subjectdata[subjects[subj]][row[0]] = int(count)
     # write the data
     print('  Writing count data')
-    with open(f'results/taxa_files/{project}_consolidated.tsv','w') as out:
+    with open(f'../results/taxa_files/{project}_consolidated.tsv','w') as out:
         writer = csv.writer(out, dialect='excel-tab')
         writer.writerow([''] + subjects)
         for taxon in unique_taxa:
