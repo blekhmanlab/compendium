@@ -38,16 +38,29 @@ do
     num=$(($num + 1))
 done
 
-echo "DONE. Submitting dada job."
-
-echo "${PROJECT},download,end" >> /home/blekhman/shared/compendium/activity.csv
-
 cd fastq
 ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
 
-echo "${PROJECT},unpack,start" >> /home/blekhman/shared/compendium/activity.csv
-echo "${PROJECT},unpack,end" >> /home/blekhman/shared/compendium/activity.csv
+# If the samples are only single-ended FASTQ, the format will be different:
+if [[ $(cat ../${PROJECT}/samples.txt | wc -l) -lt 3 ]]; then
+    echo "FASTQ files don't end with _1 and _2."
+    for f in *.fastq; do
+        fnew=`echo $f | sed 's/.fastq/_1.fastq/'`
+        mv $f $fnew
+    done
+fi
 
+# build the sample list again
+ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
+
+if [[ $(cat ../${PROJECT}/samples.txt | wc -l) -lt 3 ]]; then
+    echo "Not enough samples downloaded."
+    exit 1
+fi
+
+echo "${PROJECT},download,end" >> /home/blekhman/shared/compendium/activity.csv
+
+echo "DONE. Submitting dada job."
 
 cd /home/blekhman/shared/compendium/logs
 sbatch --export=PROJECT=${PROJECT} --job-name=${PROJECT}dada -o ${PROJECT}dada.log ../code/run_dada.slurm
