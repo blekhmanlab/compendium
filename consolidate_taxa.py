@@ -8,9 +8,9 @@ done = os.listdir('../results/taxa_files')
 done = [x.split('_')[0] for x in done] # trim off filenames
 
 todo = [x for x in all_projects if x not in done]
-
+print(f'PROJECTS TO PROCESS: {len(todo)}')
 for project in todo:
-    if project[0:2] != 'PRJ':
+    if project[0:3] != 'PRJ':
         print(f'Entry {project} doesnt match pattern. Skipping.')
         continue
     print(f'Starting project {project}')
