@@ -42,7 +42,8 @@ if (length(args) > 0) {
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
                               reverse_reads, filtered_reverse_reads,
                               truncQ=0, rm.phix=TRUE, multithread=4,
-                              verbose=TRUE, trimLeft=trimLeft, trimRight=trimRight)
+                              verbose=TRUE, trimLeft=trimLeft, trimRight=trimRight,
+                              matchIDs=TRUE)
 
 # saveRDS(filtered_out, 'filtered_out.rds')
 #filtered_out <- readRDS('filtered_out.rds')
@@ -80,6 +81,8 @@ names(ddF) <- samples
 ddR <- vector("list", length(samples))
 names(ddR) <- samples
 
+# TODO: We may be able to fix the "Not all provided files exist" problem
+# using this here: https://github.com/benjjneb/dada2/issues/711
 for(sam in samples) {
   cat("Processing:", sam, "\n")
   derepF <- derepFastq(paste("../intermediate/", sam, ".R1.filtered.fastq.gz", sep=""))
