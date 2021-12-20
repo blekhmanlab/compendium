@@ -52,7 +52,7 @@ cd fastq
 ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
 
 # If the samples are only single-ended FASTQ, the format will be different:
-if [[ $(cat ../${PROJECT}/samples.txt | wc -l) -lt 3 ]]; then
+if [[ $(cat ../samples.txt | wc -l) -lt 3 ]]; then
     echo "FASTQ files don't end with _1 and _2."
     for f in *.fastq; do
         fnew=`echo $f | sed 's/.fastq/_1.fastq/'`
@@ -63,7 +63,7 @@ fi
 # build the sample list again
 ls *_1.fastq | cut -f1 -d "_" > ../samples.txt
 
-if [[ $(cat ../${PROJECT}/samples.txt | wc -l) -lt 3 ]]; then
+if [[ $(cat ../samples.txt | wc -l) -lt 3 ]]; then
     echo "Not enough samples downloaded."
     exit 1
 fi
