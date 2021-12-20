@@ -27,13 +27,23 @@ mkdir -p intermediate
 
 echo "Fetching SRA files"
 num=1
+issues=0
 for sample in $(cat SraAccList.txt)
 do
     echo "On sample ${num}: $sample"
+    problem=0
     if [[ -f "/scratch.global/rabdill/bulk/${PROJECT}/fastq/${sample}_1.fastq" ]]; then
         echo "Already found! Continuing."
     else
-        /home/blekhman/shared/compendium/code/sratoolkit.2.11.3-centos_linux64/bin/fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq || echo "SOMETHING WENT WRONG HERE. Continuing..."
+        /home/blekhman/shared/compendium/code/sratoolkit.2.11.3-centos_linux64/bin/fasterq-dump $sample -e 4 -S -O /scratch.global/rabdill/bulk/${PROJECT}/fastq || problem=1
+    fi
+    if [[ $problem -gt 0 ]]; then
+        echo "SOMETHING WENT WRONG HERE. Continuing..."
+        issues=$(($issues + 1))
+    fi
+    if [[ $issues -gt 10 ]]; then
+        echo "Too many issues with this project. Bailing."
+        exit 1
     fi
     num=$(($num + 1))
 done
