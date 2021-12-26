@@ -30,23 +30,18 @@ filtered_reverse_reads <- paste0("../intermediate/", samples, ".R2.filtered.fast
 # that become important later.
 log('Filtering...')
 
-trimLeft = 0
-trimRight = 0
+tomatch = FALSE
 args = commandArgs(trailingOnly=TRUE)
 if (length(args) > 0) {
-  if (args[1] == 'trim') {
-    trimLeft = 24
-    trimRight = 24
+  if (args[1] == 'matchids') {
+    tomatch = TRUE
   }
 }
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
                               reverse_reads, filtered_reverse_reads,
                               truncQ=0, rm.phix=TRUE, multithread=4,
                               verbose=TRUE, trimLeft=trimLeft, trimRight=trimRight,
-                              matchIDs=TRUE)
-
-# saveRDS(filtered_out, 'filtered_out.rds')
-#filtered_out <- readRDS('filtered_out.rds')
+                              matchIDs=tomatch)
 
 #########################
 # Building error models
@@ -65,10 +60,6 @@ pdf('../temp/reverse_error_model.pdf')
 plotErrors(err_reverse_reads, nominalQ=TRUE)
 dev.off()
 
-# saveRDS(err_forward_reads, 'err_forward_reads.rds')
-# saveRDS(err_reverse_reads, 'err_reverse_reads.rds')
-#err_forward_reads <- readRDS('err_forward_reads.rds')
-#err_reverse_reads <- readRDS('err_reverse_reads.rds')
 
 #########################
 # Generate count table

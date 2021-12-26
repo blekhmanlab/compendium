@@ -8,7 +8,7 @@ from collections import defaultdict
 tasks = [
     'download',
     'dada',
-    'trimdada',
+    'matchdada',
     'archive'
 ]
 # some projects are going to have problems we don't want to address
@@ -19,7 +19,7 @@ with open('/home/blekhman/shared/compendium/code/to_ignore.csv') as f:
 progress = defaultdict(lambda: {
     'download': [],
     'dada': [],
-    'trimdada': [],
+    'matchdada': [],
     'archive': []
 })
 
@@ -42,7 +42,7 @@ for study in progress.keys():
             if 'start' not in progress[study][task]:
                 if task=='archive':
                     to_archive.append(study)
-                elif task == 'trimdada':
+                elif task == 'matchdada':
                     continue # Not every project needs this
                 else:
                     print(f'{study} never started {task}')
@@ -51,8 +51,8 @@ for study in progress.keys():
                 # If a task started but didn't finish
                 if task == 'dada':
                     # if the dada task didn't finish, but re-running
-                    # it as trimdada DID finish, chill out
-                    if 'end' in progress[study]['trimdada']:
+                    # it as matchdada DID finish, chill out
+                    if 'end' in progress[study]['matchdada']:
                         continue
                 print(f'{study} started {task} but did not finish')
                 break
