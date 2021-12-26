@@ -29,7 +29,7 @@ for inputfile in files:
                     unique_taxa.append(row[0])
 # write the data
 print('Writing count data')
-with open('results/taxa_files/studies_consolidated.tsv','w') as out:
+with open('../results/taxa_files/studies_consolidated.tsv','w') as out:
     writer = csv.writer(out, dialect='excel-tab')
     # columns are SAMPLES:
     # writer.writerow([''] + samples)
