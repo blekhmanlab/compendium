@@ -27,6 +27,7 @@ if [[ "$doit" == "DISCARD" ]]; then
 
     echo 'DISCARDING.'
     rm -rf /scratch.global/rabdill/bulk/${1}
+    rm -rf /home/blekhman/shared/compendium/results/${1}
     echo ${1} >> /home/blekhman/shared/compendium/code/to_ignore.csv
     exit 0
 fi
