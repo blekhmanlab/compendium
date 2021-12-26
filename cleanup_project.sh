@@ -5,8 +5,8 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
-head /home/blekhman/shared/compendium/results/${1}/ASVs_taxonomy.tsv
-head /home/blekhman/shared/compendium/results/${1}/summary.tsv
+head -11 /home/blekhman/shared/compendium/results/${1}/ASVs_taxonomy.tsv
+head -11 /home/blekhman/shared/compendium/results/${1}/summary.tsv
 echo -e "\nClean up project ${1}? Type one of the following options."
 echo -e "\n\ny = 'Yes, we want to include this, clean up the extra files.'"
 echo "n = 'Nevermind, leave everything where it is.'"
