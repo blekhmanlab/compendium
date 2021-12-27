@@ -40,8 +40,7 @@ if (length(args) > 0) {
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
                               reverse_reads, filtered_reverse_reads,
                               truncQ=0, rm.phix=TRUE, multithread=4,
-                              verbose=TRUE, trimLeft=trimLeft, trimRight=trimRight,
-                              matchIDs=tomatch)
+                              verbose=TRUE, matchIDs=tomatch)
 
 #########################
 # Building error models
