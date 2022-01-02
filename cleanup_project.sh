@@ -5,6 +5,9 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
+echo "Lines in results file:"
+echo $(cat /home/blekhman/shared/compendium/results/${1}/summary.tsv | wc -l)
+
 head -11 /home/blekhman/shared/compendium/results/${1}/ASVs_taxonomy.tsv
 head -11 /home/blekhman/shared/compendium/results/${1}/summary.tsv
 echo -e "\nClean up project ${1}? Type one of the following options."

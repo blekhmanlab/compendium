@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH -t 24:00:00 -N 1
-#SBATCH --mem=32G
+#SBATCH --mem=24G
 #SBATCH --ntasks=8
 #SBATCH -p blekhman
 #SBATCH --mail-type=FAIL

@@ -42,6 +42,11 @@ filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
                               truncQ=0, rm.phix=TRUE, multithread=4,
                               verbose=TRUE, matchIDs=tomatch)
 
+# Then we limit the list of filtered fastq files to include
+# only the ones that actually had reads pass the filter:
+filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
+filtered_reverse_reads <- filtered_reverse_reads[file.exists(filtered_reverse_reads)]
+
 #########################
 # Building error models
 #########################
