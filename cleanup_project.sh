@@ -48,6 +48,8 @@ rm -rf temp
 rm -rf intermediate
 rm -rf fastq
 rm -rf results
+rm fasterq.tmp.*
+
 cd ..
 tar -zcvf ${1}.tar.gz ${1}
 mv ${1}.tar.gz /home/blekhman/shared/compendium/archived/
