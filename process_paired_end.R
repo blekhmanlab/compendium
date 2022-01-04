@@ -47,6 +47,10 @@ filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
 filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
 filtered_reverse_reads <- filtered_reverse_reads[file.exists(filtered_reverse_reads)]
 
+#revise the list of samples to only include those
+# that actually have reads now:
+samples <- gsub('\\.\\./intermediate/(\\w+)\\.R1.filtered.fastq.gz$', '\\1', filtered_forward_reads)
+
 #########################
 # Building error models
 #########################

@@ -42,6 +42,10 @@ filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
 # only the ones that actually had reads pass the filter:
 filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
 
+#revise the list of samples to only include those
+# that actually have reads now:
+samples <- gsub('\\.\\./intermediate/(\\w+)\\.R1.filtered.fastq.gz$', '\\1', filtered_forward_reads)
+
 # saveRDS(filtered_out, '../temp/filtered_out.rds')
 # filtered_out <- readRDS('../temp/filtered_out.rds')
 
