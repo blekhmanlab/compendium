@@ -46,9 +46,6 @@ filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_re
 # that actually have reads now:
 samples <- gsub('\\.\\./intermediate/(\\w+)\\.R1.filtered.fastq.gz$', '\\1', filtered_forward_reads)
 
-# saveRDS(filtered_out, '../temp/filtered_out.rds')
-# filtered_out <- readRDS('../temp/filtered_out.rds')
-
 #########################
 # Building error models
 #########################
@@ -100,12 +97,24 @@ nochim_val <- rowSums(seqtab.nochim)
 length_val <- rowSums(seqtab.noshort)
 chim_removed_val <- round(((length_val-nochim_val)/forwd_val)*100, 1)
 
-summary_tab <- data.frame(dinput=filtered_out[,1],
+if(length(filtered_out[,1]) > length(filtered_out[,2])) {
+  # if some samples had zero reads go through the filter,
+  # we can't display the total input reads, because that
+  # column has more entries than the rest of the columns,
+  # which exclude the filtered-out samples
+  summary_tab <- data.frame(filter=filtered_out[,2], forwd=forwd_val,
+                          length=length_val,
+                          nonchim=nochim_val,
+                          chim_perc=chim_removed_val,
+                          retained_perc=round((100*nochim_val)/filtered_out[,2], 1))
+} else {
+  summary_tab <- data.frame(dinput=filtered_out[,1],
                           filter=filtered_out[,2], forwd=forwd_val,
                           length=length_val,
                           nonchim=nochim_val,
                           chim_perc=chim_removed_val,
                           retained_perc=round((100*nochim_val)/filtered_out[,1], 1))
+}
 
 # OUTPUT
 log('Writing summary output...')
