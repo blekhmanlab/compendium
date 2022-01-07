@@ -41,6 +41,7 @@ filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads,
 # Then we limit the list of filtered fastq files to include
 # only the ones that actually had reads pass the filter:
 filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
+LOST_READS <- length(filtered_forward_reads) < length(forward_reads)
 
 #revise the list of samples to only include those
 # that actually have reads now:
@@ -97,7 +98,7 @@ nochim_val <- rowSums(seqtab.nochim)
 length_val <- rowSums(seqtab.noshort)
 chim_removed_val <- round(((length_val-nochim_val)/forwd_val)*100, 1)
 
-if(length(filtered_out[,1]) > length(filtered_out[,2])) {
+if(LOST_READS) {
   # if some samples had zero reads go through the filter,
   # we can't display the total input reads, because that
   # column has more entries than the rest of the columns,
