@@ -48,7 +48,7 @@ rm -rf temp
 rm -rf intermediate
 rm -rf fastq
 rm -rf results
-rm fasterq.tmp.*
+rm -rf fasterq.tmp.*
 
 cd ..
 tar -zcvf ${1}.tar.gz ${1}
