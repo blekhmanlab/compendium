@@ -89,38 +89,6 @@ seqtab.nochim <- removeBimeraDenovo(seqtab.noshort, verbose=T)
 #########################
 # Check reads dropped at each step
 #########################
-getN <- function(x) sum(getUniques(x))
-
-print('Calculating summary stats...')
-# making a little table
-forwd_val <- sapply(ddF, getN)
-nochim_val <- rowSums(seqtab.nochim)
-length_val <- rowSums(seqtab.noshort)
-chim_removed_val <- round(((length_val-nochim_val)/forwd_val)*100, 1)
-
-if(LOST_READS) {
-  # if some samples had zero reads go through the filter,
-  # we can't display the total input reads, because that
-  # column has more entries than the rest of the columns,
-  # which exclude the filtered-out samples
-  summary_tab <- data.frame(filter=filtered_out[,2], forwd=forwd_val,
-                          length=length_val,
-                          nonchim=nochim_val,
-                          chim_perc=chim_removed_val,
-                          retained_perc=round((100*nochim_val)/filtered_out[,2], 1))
-} else {
-  summary_tab <- data.frame(dinput=filtered_out[,1],
-                          filter=filtered_out[,2], forwd=forwd_val,
-                          length=length_val,
-                          nonchim=nochim_val,
-                          chim_perc=chim_removed_val,
-                          retained_perc=round((100*nochim_val)/filtered_out[,1], 1))
-}
-
-# OUTPUT
-log('Writing summary output...')
-write.table(summary_tab, "../results/summary.tsv",
-            sep="\t", quote=F, col.names=NA)
 log('Writing ASV table...')
 write.table(seqtab.nochim, "../results/ASV.tsv",
             sep="\t", quote=F, col.names=NA)
@@ -151,6 +119,39 @@ write(asv_fasta, "../results/ASVs.fa")
 write.table(asv_tab, "../results/ASVs_counts.tsv",
             sep="\t", quote=F, col.names=NA)
 write.table(asv_tax, "../results/ASVs_taxonomy.tsv",
+            sep="\t", quote=F, col.names=NA)
+
+getN <- function(x) sum(getUniques(x))
+
+print('Calculating summary stats...')
+# making a little table
+forwd_val <- sapply(ddF, getN)
+nochim_val <- rowSums(seqtab.nochim)
+length_val <- rowSums(seqtab.noshort)
+chim_removed_val <- round(((length_val-nochim_val)/forwd_val)*100, 1)
+
+if(LOST_READS) {
+  # if some samples had zero reads go through the filter,
+  # we can't display the total input reads, because that
+  # column has more entries than the rest of the columns,
+  # which exclude the filtered-out samples
+  summary_tab <- data.frame(forwd=forwd_val,
+                          length=length_val,
+                          nonchim=nochim_val,
+                          chim_perc=chim_removed_val,
+                          retained_perc=round((100*nochim_val)/forwd_val, 1))
+} else {
+  summary_tab <- data.frame(dinput=filtered_out[,1],
+                          filter=filtered_out[,2], forwd=forwd_val,
+                          length=length_val,
+                          nonchim=nochim_val,
+                          chim_perc=chim_removed_val,
+                          retained_perc=round((100*nochim_val)/filtered_out[,1], 1))
+}
+
+# OUTPUT
+log('Writing summary output...')
+write.table(summary_tab, "../results/summary.tsv",
             sep="\t", quote=F, col.names=NA)
 
 log('DONE!!!')
