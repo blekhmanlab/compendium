@@ -38,15 +38,14 @@ for inputfile in files:
                 if row[0] not in unique_taxa:
                     unique_taxa.append(row[0])
 
-        to_log = [inputfile, len(study_samples), len(study_taxa)]
-        
+    stats.append((inputfile, len(study_samples), len(study_taxa)))
+
 # write down the project-level stats
 print('Recording project stats')
 with open('../results/taxa_files/studies_consolidated_LOG.csv','w') as out:
     writer = csv.writer(out)
     writer.writerow(['study','samples','taxa'])
-    for study in stats:
-        writer.writerow(study)
+    writer.writerows(stats)
 
 # write the data
 print('Writing count data')
