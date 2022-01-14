@@ -16,36 +16,33 @@ print('Loading count data')
 files = os.listdir('../results/taxa_files')
 
 stats = []
-for inputfile in files:
-    print(f'Processing file {inputfile}')
-    with open(f'../results/taxa_files/{inputfile}', 'r') as f:
-        reader = csv.reader(f, dialect='excel-tab')
-        try:
-            study_samples = next(reader)[1:] # get (ordered) list of samples
-        except StopIteration:
-            # this happens if the file is empty
-            print(f'Empty file?? {inputfile}')
-            continue
-        study_samples = [f'{inputfile}_{x}' for x in study_samples] # add study ID to beginning to prevent collisions
-        samples += study_samples # add samples to master list
 
-        study_taxa = []
-        for row in reader:
-            for subj, count in enumerate(row[1:]): # skip the first item, which is the name
-                sampledata[study_samples[subj]][row[0]] = int(count)
-                study_taxa.append(row[0])
-                # make sure we have this taxon in the list
-                if row[0] not in unique_taxa:
-                    unique_taxa.append(row[0])
-
-    stats.append((inputfile, len(study_samples), len(study_taxa)))
-
-# write down the project-level stats
-print('Recording project stats')
 with open('../results/taxa_files/studies_consolidated_LOG.csv','w') as out:
     writer = csv.writer(out)
     writer.writerow(['study','samples','taxa'])
-    writer.writerows(stats)
+    for inputfile in files:
+        print(f'Processing file {inputfile}')
+        with open(f'../results/taxa_files/{inputfile}', 'r') as f:
+            reader = csv.reader(f, dialect='excel-tab')
+            try:
+                study_samples = next(reader)[1:] # get (ordered) list of samples
+            except StopIteration:
+                # this happens if the file is empty
+                print(f'Empty file?? {inputfile}')
+                continue
+            study_samples = [f'{inputfile}_{x}' for x in study_samples] # add study ID to beginning to prevent collisions
+            samples += study_samples # add samples to master list
+
+            study_taxa = []
+            for row in reader:
+                for subj, count in enumerate(row[1:]): # skip the first item, which is the name
+                    sampledata[study_samples[subj]][row[0]] = int(count)
+                    study_taxa.append(row[0])
+                    # make sure we have this taxon in the list
+                    if row[0] not in unique_taxa:
+                        unique_taxa.append(row[0])
+
+        writer.writerow((inputfile, len(study_samples), len(study_taxa)))
 
 # write the data
 print('Writing count data')
