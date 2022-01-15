@@ -4,11 +4,6 @@ import csv
 
 unique_taxa = []
 
-# TODO: This is where we can strip out blanks that got included with the other samples.
-# If we know the approximate read depth for the real samples, anything with way fewer
-# reads can get chucked. There are studies where most samples have 50,000 reads and
-# 3 samples have literally 35 reads, for example.
-
 sampledata = defaultdict(lambda: defaultdict(int))
 samples = []
 print('Loading count data')
@@ -20,9 +15,14 @@ stats = []
 with open('../results/taxa_files/studies_consolidated_LOG.csv','w') as out:
     writer = csv.writer(out)
     writer.writerow(['study','samples','taxa'])
-    for inputfile in files:
+    out.flush()
+    print(f'Found {len(files)} files to process.')
+    for index, inputfile in enumerate(files):
         print(f'Processing file {inputfile}')
         with open(f'../results/taxa_files/{inputfile}', 'r') as f:
+            if inputfile[0] == 's':
+                continue # one of the study results files
+
             reader = csv.reader(f, dialect='excel-tab')
             try:
                 study_samples = next(reader)[1:] # get (ordered) list of samples
@@ -43,7 +43,10 @@ with open('../results/taxa_files/studies_consolidated_LOG.csv','w') as out:
                         unique_taxa.append(row[0])
 
         writer.writerow((inputfile, len(study_samples), len(study_taxa)))
-
+        if index % 10 == 0:
+            out.flush()
+    out.flush()
+    os.fsync(out.fileno())
 # write the data
 print('Writing count data')
 with open('../results/taxa_files/studies_consolidated.tsv','w') as out:
