@@ -43,8 +43,9 @@ with open('../results/taxa_files/studies_consolidated_LOG.csv','w') as out:
                         unique_taxa.append(row[0])
 
         writer.writerow((inputfile, len(study_samples), len(study_taxa)))
-        if index % 10 == 0:
+        if index % 25 == 0:
             out.flush()
+            print(f'Completed reading {index} out of {len(files)} files')
     out.flush()
     os.fsync(out.fileno())
 # write the data
