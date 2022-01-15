@@ -41,6 +41,8 @@ with open('../results/taxa_files/studies_consolidated_LOG.csv','w') as out:
                     # make sure we have this taxon in the list
                     if row[0] not in unique_taxa:
                         unique_taxa.append(row[0])
+            # remove duplicates:
+            study_taxa = list(set(study_taxa))
 
         writer.writerow((inputfile, len(study_samples), len(study_taxa)))
         if index % 25 == 0:
