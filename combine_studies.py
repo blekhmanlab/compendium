@@ -20,7 +20,7 @@ with open('../results/taxa_files/studies_consolidated_LOG.csv','w') as out:
     for index, inputfile in enumerate(files):
         print(f'Processing file {inputfile}')
         with open(f'../results/taxa_files/{inputfile}', 'r') as f:
-            if inputfile[0] == 's':
+            if inputfile[0] != 'P':
                 continue # one of the study results files
 
             reader = csv.reader(f, dialect='excel-tab')
