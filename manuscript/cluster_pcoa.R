@@ -45,29 +45,45 @@ get_abundance <- function(taxtable) {
 #/home/blekhman/shared/compendium/results/taxa_files/
 x <- read.csv('studies_consolidated.tsv', sep='\t')
 rownames(x) <- x$X
+rownames(x) <- x$X
 x$X <- NULL
+nrow(x) # total samples to start
+ncol(x) # total taxa to start
+nrow(x[rowSums(x) < 1000,]) # how many samples don't have enough reads?
 x <- x[rowSums(x) >= 1000,] # get rid of empty samples
 rownames(x) <- gsub('(\\w+)_consolidated.tsv(_\\w+)$', '\\1\\2', rownames(x))
 
+# taxa must have > 100 reads across ALL samples
+# (this is redundent to the next step, but is useful
+# for thinning out the data frame before we start summing
+# up columns)
+ncol(x[,colSums(x) < 900]) # taxa w less than 100 reads total
 x <- x[,colSums(x) >= 900]
 # taxa must appear in at least 1000 samples
 richness <- x %>% mutate_if(is.numeric, ~1 * (. > 0))
+ncol(x[,colSums(richness) < 1000])
 x <- x[,colSums(richness) >= 1000]
-rm(richness)
 # after we get rid of taxa, make sure all our sample still have some reads left
+nrow(x[rowSums(x) < 1000,])
 x <- x[rowSums(x) >= 1000,]
+rm(richness)
 
-# Remove the samples with messed up assignments
+# Remove the smamples with messed up assignments
 taxphylum <- x
 colnames(taxphylum) <- gsub('^(\\w+\\.\\w+)\\.\\w+\\..+$', '\\1', colnames(taxphylum))
 taxphylum <- combine_taxa(taxphylum) %>% make_rel()
 taxphylum$weird <- taxphylum$NA.NA + taxphylum$Eukaryota.NA +
   taxphylum$Bacteria.NA
-nrow(taxphylum[taxphylum$weird >= 0.1,]) # samples to remove
-x <- x[taxphylum$weird < 0.1,]
+nrow(taxphylum[taxphylum$weird > 0.1,]) # samples to remove
+x <- x[taxphylum$weird <= 0.1,]
 
-nrow(taxphylum[taxphylum$Archaea.Euryarchaeota >= 0.1,]) # samples to remove
-x <- x[taxphylum$Archaea.Euryarchaeota < 0.1,]
+# re-calculate this so the rows in taxphylum match the new
+# rows in x
+taxphylum <- x
+colnames(taxphylum) <- gsub('^(\\w+\\.\\w+)\\.\\w+\\..+$', '\\1', colnames(taxphylum))
+taxphylum <- combine_taxa(taxphylum) %>% make_rel()
+nrow(taxphylum[taxphylum$Archaea.Euryarchaeota > 0.1,]) # samples to remove
+x <- x[taxphylum$Archaea.Euryarchaeota <= 0.1,]
 
 
 
