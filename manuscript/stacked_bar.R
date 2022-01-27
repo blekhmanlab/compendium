@@ -3,7 +3,7 @@ library(scales) # for y-axis labels
 library(ggrepel) # for labels in scatter plot
 library(patchwork)
 
-final.rel <- as.data.frame(t(apply(taxphylum, 1, rel)))
+final.rel <- make_rel(taxphylum)
 
 rowSums(final.rel) #make sure it's actually adding up
 
@@ -69,4 +69,4 @@ a_legend <- cowplot::get_legend(panel_a +
               )
             )
 
-panel_a + inset_element(a_legend, 0.6, 0.8, 0.9, 0.8)
+big_stacked <- panel_a + inset_element(a_legend, 0.6, 0.8, 0.9, 0.8)

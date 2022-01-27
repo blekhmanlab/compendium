@@ -21,6 +21,7 @@ get_prevalence <- function(taxtable) {
   prevalence <- data.frame(colnames(richness), colSums(richness))
   colnames(prevalence) <- c('taxon','samples')
   rownames(prevalence) <- NULL
+  prevalence$prop <- prevalence$samples / nrow(taxtable)
   return(prevalence)
 }
 
@@ -79,12 +80,17 @@ taxphylum <- x
 colnames(taxphylum) <- gsub('^(\\w+\\.\\w+)\\.\\w+\\..+$', '\\1', colnames(taxphylum))
 taxphylum <- combine_taxa(taxphylum) %>% make_rel()
 taxphylum$weird <- taxphylum$NA.NA + taxphylum$Eukaryota.NA +
-    taxphylum$Bacteria.NA
-nrow(taxphylum[taxphylum$weird >= 0.1,]) # samples to remove
-x <- x[taxphylum$weird < 0.1,]
+  taxphylum$Bacteria.NA
+nrow(taxphylum[taxphylum$weird > 0.1,]) # samples to remove
+x <- x[taxphylum$weird <= 0.1,]
 
-nrow(taxphylum[taxphylum$Archaea.Euryarchaeota >= 0.1,]) # samples to remove
-x <- x[taxphylum$Archaea.Euryarchaeota < 0.1,]
+# re-calculate this so the rows in taxphylum match the new
+# rows in x
+taxphylum <- x
+colnames(taxphylum) <- gsub('^(\\w+\\.\\w+)\\.\\w+\\..+$', '\\1', colnames(taxphylum))
+taxphylum <- combine_taxa(taxphylum) %>% make_rel()
+nrow(taxphylum[taxphylum$Archaea.Euryarchaeota > 0.1,]) # samples to remove
+x <- x[taxphylum$Archaea.Euryarchaeota <= 0.1,]
 
 
 
@@ -96,20 +102,6 @@ colnames(projects.count) <- c('project','samples')
 nrow(projects.count) # how many projects?
 median(projects.count$samples)
 max(projects.count$samples)
-
-# library size
-size <- data.frame(
-  sample=rownames(x),
-  lib=rowSums(x)
-)
-mean(size$lib)
-sd(size$lib)
-
-check <- x[projects$project=='PRJNA63661',]
-colnames(check) <- gsub('^(\\w+\\.\\w+)\\.\\w+\\..+$', '\\1', colnames(check))
-check <- check %>%
-    combine_taxa() %>%
-    make_rel()
 
 # CONSOLIDATE COLUMN NAMES AT DIFFERENT TAXONOMIC LEVELS:
 # (todo: remove entries like 'Bacteria.NA.NA.NA.NA' etc)
@@ -138,7 +130,33 @@ prevalence.family <- get_prevalence(taxfamily)
 abundance.family <- get_abundance(taxfamily)
 # -----------------
 taxgenus <- x
-colnames(taxgenus) <- gsub('^(\\w+\\.\\w+\\.\\w+\\.\\w+\\.\\w+.\\w+)', '\\1', colnames(taxgenus))
 taxgenus <- combine_taxa(taxgenus)
 prevalence.genus <- get_prevalence(taxgenus)
 abundance.genus <- get_abundance(taxgenus)
+
+
+#---- library size
+size <- data.frame(
+  sample=rownames(x),
+  lib=rowSums(x)
+)
+mean(size$lib)
+sd(size$lib)
+#---- genera per sample
+richness <- taxgenus %>% mutate_if(is.numeric, ~1 * (. > 0))
+genuscount <- data.frame(sample=rownames(richness),
+                         genera=rowSums(richness))
+mean(genuscount$genera)
+sd(genuscount$genera)
+
+#---- families per sample
+richness <- taxfamily %>% mutate_if(is.numeric, ~1 * (. > 0))
+familycount <- data.frame(sample=rownames(richness),
+                         genera=rowSums(richness))
+mean(familycount$genera)
+sd(familycount$genera)
+
+#--------- unique taxa
+new <- prevalence.genus
+new$tocount <- gsub('.*\\.(\\w+)$', '\\1', new$taxon)
+nrow(new[new$tocount!='NA',])

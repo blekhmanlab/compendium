@@ -1,3 +1,5 @@
+library(scales)
+
 # ----------- RAREFACTION
 
 REPLICATES <- 30
@@ -81,7 +83,7 @@ ggplot(summary, aes(x=scount, y=observed,
   theme_bw() +
   labs(x='Samples', y='Unique taxa') +
   scale_x_continuous(
-    limits=c(0,2000),
+    limits=c(0,1500),
     labels = comma_format()
     #trans="sqrt"
   )
