@@ -106,7 +106,7 @@ clr <- as.data.frame(t(clr))
 library(vegan) # for distance calc
 library(bigmds) # https://arxiv.org/abs/2007.11919
 date()
-set.seed(42)
+set.seed(45)
 # plotting 8 MDS dimensions:
 nmds <- divide_conquer_mds(clr, 10000, 16, 8, n_cores = 4, dist_fn=vegdist, method='euclidean')
 date()

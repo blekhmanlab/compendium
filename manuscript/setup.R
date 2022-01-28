@@ -21,7 +21,7 @@ get_prevalence <- function(taxtable) {
   prevalence <- data.frame(colnames(richness), colSums(richness))
   colnames(prevalence) <- c('taxon','samples')
   rownames(prevalence) <- NULL
-  prevalence$prop <- prevalence$samples / nrow(taxtable)
+  #prevalence$prop <- prevalence$samples / nrow(taxtable)
   return(prevalence)
 }
 
@@ -84,13 +84,12 @@ taxphylum$weird <- taxphylum$NA.NA + taxphylum$Eukaryota.NA +
 nrow(taxphylum[taxphylum$weird > 0.1,]) # samples to remove
 x <- x[taxphylum$weird <= 0.1,]
 
-# re-calculate this so the rows in taxphylum match the new
-# rows in x
-taxphylum <- x
-colnames(taxphylum) <- gsub('^(\\w+\\.\\w+)\\.\\w+\\..+$', '\\1', colnames(taxphylum))
-taxphylum <- combine_taxa(taxphylum) %>% make_rel()
-nrow(taxphylum[taxphylum$Archaea.Euryarchaeota > 0.1,]) # samples to remove
-x <- x[taxphylum$Archaea.Euryarchaeota <= 0.1,]
+
+#taxphylum <- x
+#colnames(taxphylum) <- gsub('^(\\w+\\.\\w+)\\.\\w+\\..+$', '\\1', colnames(taxphylum))
+#taxphylum <- combine_taxa(taxphylum) %>% make_rel()
+#nrow(taxphylum[taxphylum$Archaea.Euryarchaeota > 0.1,]) # samples to remove
+#x <- x[taxphylum$Archaea.Euryarchaeota <= 0.1,]
 
 
 
@@ -160,3 +159,31 @@ sd(familycount$genera)
 new <- prevalence.genus
 new$tocount <- gsub('.*\\.(\\w+)$', '\\1', new$taxon)
 nrow(new[new$tocount!='NA',])
+
+samples <- data.frame(
+  sample=raw$X
+)
+#samples$project <- gsub('(\\w+)_consolidated.tsv_(\\w+)$', '\\1', samples$sample)
+samples$sample <- gsub('(\\w+)_consolidated.tsv_(\\w+)$', '\\2', samples$sample)
+write.csv(samples, 'import_processed.csv')
+
+
+
+#------------- SHANNON DIVERSITY
+library(vegan)
+library(dplyr)
+
+shannon <- diversity(taxfamily, "shannon")
+shannon <- as.data.frame(shannon)
+shannon$srr <- rownames(shannon)
+
+depth <- data.frame(rownames(taxfamily), rowSums(taxfamily))
+colnames(depth) <- c('srr','depth')
+
+
+div_depth <- inner_join(shannon, depth, by='srr')
+# scatter plot of library size vs diversity:
+ggplot(div_depth, aes(x=depth, y=shannon)) + 
+  geom_point() +
+  theme_bw() +
+  scale_x_log10()

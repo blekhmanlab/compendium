@@ -5,8 +5,6 @@ library(patchwork)
 
 final.rel <- make_rel(taxphylum)
 
-rowSums(final.rel) #make sure it's actually adding up
-
 # find the taxa with the highest variance, so we can use them
 # to order the samples
 variance <- as.data.frame(sapply(final.rel, sd))
@@ -65,8 +63,66 @@ panel_a <- ggplot(final.long, aes(fill=taxon, y=rel, x=sample)) +
 a_legend <- cowplot::get_legend(panel_a +
               theme(
                 legend.position='bottom',
-                legend.text = element_text(size=11)
+                legend.text = element_text(size=11),
+                plot.tag.position  = c(1, 1)
               )
             )
 
-big_stacked <- panel_a + inset_element(a_legend, 0.6, 0.8, 0.9, 0.8)
+#------------- SHANNON DIVERSITY
+library(vegan)
+library(dplyr)
+
+shannon <- diversity(taxfamily, "shannon")
+shannon <- as.data.frame(shannon)
+shannon$srr <- rownames(shannon)
+
+depth <- data.frame(rownames(taxfamily), rowSums(taxfamily))
+colnames(depth) <- c('srr','depth')
+
+diversity <- ggplot(shannon, aes(x=shannon)) + 
+  geom_histogram(bins=50, fill='#969696', color='black') +
+  geom_vline(xintercept=median(shannon$shannon),
+             size=1,color="red") +
+  annotate("text", label=paste(
+      "median: ", round(median(shannon$shannon), 3)
+    ),
+    size = 4,
+    x=1.4, y=9000
+  ) +
+  theme_bw() +
+  labs(
+    x="Shannon diversity",
+    y="Samples"
+  ) +
+  scale_y_continuous(labels=scales::comma)
+
+depth_plot <- ggplot(depth, aes(x=depth)) + 
+  geom_histogram(bins=50, fill='#969696', color='black') +
+  geom_vline(xintercept=median(depth$depth),
+             size=1,color="red") +
+  annotate("text", label=paste(
+      "median: ", median(depth$depth)
+    ),
+    size = 4,
+    x=80000, y=14000
+  ) +
+  theme_bw() +
+  labs(
+    x="Merged reads (log)",
+    y="Samples"
+  ) +
+  scale_y_continuous(
+    labels=scales::comma,
+    limits=c(0,15000),
+    expand=c(0,0)
+  ) +
+  scale_x_log10(labels=scales::comma)
+
+#------- assembly
+big_stacked <- panel_a 
+
+(panel_a + inset_element(a_legend, align_to='plot',
+            0.6, 0.6, 0.95, 0.8,
+            ignore_tag = TRUE) ) / (diversity | depth_plot) +
+  plot_annotation(tag_levels='A')
+
