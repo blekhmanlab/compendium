@@ -1,10 +1,11 @@
 library(tidyverse)
 library(data.table)
 library(ggrepel)
+library(tidyr)
 library(vegan) # for distance calc
 library(bigmds) # https://arxiv.org/abs/2007.11919
 
-setwd('~/code/shithouse/manuscript')
+setwd('~/code/moved/shithouse/manuscript')
 
 combine_taxa <- function(dataset) {
   dataset$srr <- rownames(dataset)
@@ -47,15 +48,14 @@ gm_mean = function(x, na.rm=TRUE){
   exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
 }
 
-#/home/blekhman/shared/compendium/results/taxa_files/
 x <- read.csv('studies_consolidated.tsv', sep='\t')
 rownames(x) <- x$X
 x$X <- NULL
 x <- x[rowSums(x) >= 1000,] # get rid of empty samples
 rownames(x) <- gsub('(\\w+)_consolidated.tsv(_\\w+)$', '\\1\\2', rownames(x))
 
-# taxa must have > 100 reads across ALL samples
-# (this is redundent to the next step, but is useful
+# taxa must have > 900 reads across ALL samples
+# (this is redundant to the next step, but is useful
 # for thinning out the data frame before we start summing
 # up columns)
 x <- x[,colSums(x) >= 900]
@@ -91,22 +91,23 @@ colnames(taxclass) <- gsub('^(\\w+\\.\\w+\\.\\w+)\\..+$', '\\1', colnames(taxcla
 
 reads.nozero <- combine_taxa(taxclass)
 
-reads.nozero$sample <- gsub('.+_(\\w+)$', '\\1', rownames(reads.nozero))
+#reads.nozero$sample <- gsub('.+_(\\w+)$', '\\1', rownames(reads.nozero))
+reads.nozero$sample <- rownames(reads.nozero)
 countries <- read.csv('sample_countries.csv')
-reads.nozero <- reads.nozero %>%
+regions <- read.csv('regions.csv')
+reads.nozero.countries <- reads.nozero %>%
   left_join(
     countries,
-    by=c('sample'='srr')
-  )
+    by='sample'
+  ) %>%
+  left_join(regions, by=c('country'='alpha2'))
 
+reads.nozero.countries[is.na(reads.nozero.countries$region),]$region <- 'unknown'
 
 # filter to show only samples from region
-
-target <- 'Oceania'
-test <- reads.nozero[reads.nozero$region==target,]
-test$sample <- NULL
-test$country <- NULL
-test$region <- NULL
+target <- 'Latin America and the Caribbean'
+test <- reads.nozero.countries[reads.nozero.countries$region==target,] %>%
+  select(!c('sample','country','region','geo_loc_name','name'))
 
 # we get prevalence now because it's about to get messed up
 # by the pseudo-counts
@@ -157,7 +158,7 @@ for(taxon in to_eval) {
   correlations <- rbind(correlations, tresults)
 }
 # just grab the most specific name for the biplot
-correlations$taxon <- gsub('^.+\\.(\\w+)$', '\\1', correlations$taxon)
+correlations$taxon.trimmed <- gsub('^.+\\.(\\w+)$', '\\1', correlations$taxon)
 
 #saveRDS(correlations, 'nmds_correlations.rds')
 
@@ -166,9 +167,25 @@ correlations$taxon <- gsub('^.+\\.(\\w+)$', '\\1', correlations$taxon)
 #  geom_segment() +
 #  theme_bw()
 
-correlations.scaled = correlations
+#redoing correlation labels
+correlations$taxon <- rownames(correlations)
+correlations$taxon <- gsub('^Bacteria.NA.NA$', 'Bacteria (unassigned)', correlations$taxon)
+correlations$taxon <- gsub('^Bacteria.Proteobacteria.NA$', 'Proteobacteria', correlations$taxon)
+correlations$taxon <- gsub('^NA.NA.NA$', 'Unassigned', correlations$taxon)
+
+correlations$taxon <- gsub('^\\w+\\.\\w+\\.(\\w+)$', '\\1', correlations$taxon)
+
+correlations.scaled <- correlations
 correlations.scaled$x <- correlations.scaled$x * 15
 correlations.scaled$y <- correlations.scaled$y * 15
+
+scree <- data.frame(
+  axis=9-row_number(nmds$eigen),
+  eigen=nmds$eigen,
+  eigen.rel=100 * (nmds$eigen/sum(nmds$eigen))
+)
+scree$cumulative <- cumsum(scree$eigen.rel)
+
 
 ggplot(points, aes(x=mds1, y=mds2) ) +
   geom_hex(bins = 50) +
@@ -176,8 +193,8 @@ ggplot(points, aes(x=mds1, y=mds2) ) +
   theme_bw() +
   guides(fill = guide_colorbar(title.position = "top")) +
   labs(
-    x=paste('MDS1 (', round(nmds$eigen[1],1), '%)', sep=''), 
-    y=paste('MDS2 (', round(nmds$eigen[2],1), '%)', sep=''), 
+    x=paste('MDS1 (', round(scree$eigen.rel[1],1), '%)', sep=''), 
+    y=paste('MDS2 (', round(scree$eigen.rel[2],1), '%)', sep=''), 
     fill="Samples",
     title=target
   ) +
