@@ -1,7 +1,13 @@
 # HMC Metadata Ingest Service
 
 ## Downloading metadata from NCBI
+We currently extract relevant samples from search results on [the BioSample website](https://www.ncbi.nlm.nih.gov/biosample) using this query:
+```
+txid408170[Organism:noexp] AND ("public"[filter] AND "biosample sra"[filter])
+```
+Once the results are displayed, select "Send to" > "File" with the "Full XML (text)" format. This will probably take a while.
 
+## Ingesting
 The `main.py` file has multiple functions that accommodate different steps in the process of pulling data out of the Sequence Read Archive and putting it into the samples database.
 
 * **`load_xml()`:** This loads an XML file **exported from a BioSample search** and puts the sample metadata into the database.

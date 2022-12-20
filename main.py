@@ -6,24 +6,11 @@ import xml.etree.ElementTree as ET
 
 import requests
 
-import config
 import db
 
 connection = db.Connection()
 
-# def _already_recorded():
-#     """
-#     Loads a list of sample IDs for samples that have already been recorded
-#     in the database.
-
-#     Outputs:
-#         - returns a set of strings, each a sample ID
-#     """
-#     search = connection.read("SELECT s.srs FROM samples s")
-#     sample_list = [x[0] for x in search] # each ID is nested inside a tuple of length 1
-#     return set(sample_list)
-
-def load_xml(taxon, save_samples=True, save_tags=False):
+def load_xml(taxon, filename, save_samples=True, save_tags=False):
     """
     Loads the "full text XML" exported from a search of BioSamples and adds
     them to the database.
@@ -35,7 +22,7 @@ def load_xml(taxon, save_samples=True, save_tags=False):
 
     # load the XML file
     print('loading xml...')
-    tree = ET.parse(f'./{taxon}.xml')
+    tree = ET.parse(filename)
     biosamples = tree.getroot()
     print('processing samples!')
     # iterate through each entry in the file
@@ -54,13 +41,11 @@ def load_xml(taxon, save_samples=True, save_tags=False):
             continue # skip samples without an SRA sample
         #  NOTE: we used to check for BioProject ID here,
         #  but for some reason half the samples don't list a bioproject
-        # even if they have one.
+        #  even if they have one.
 
         if save_samples:
             # write sample into table
-            with connection.db.cursor() as cursor:
-                # TODO: If we've already recorded this sample, it will error
-                cursor.execute('INSERT INTO samples (srs, taxon) VALUES (%s, %s);', (sra, taxon))
+            connection.write('INSERT INTO samples (srs, taxon) VALUES (?, ?);', (sra, taxon))
 
         if save_tags:
             # go through all the attributes and tally them
@@ -73,9 +58,10 @@ def load_xml(taxon, save_samples=True, save_tags=False):
                     all_tags[tag.attrib['attribute_name']] = text
             # add all the tags to the tag table
             with connection.db.cursor() as cursor:
-                sql = 'INSERT INTO tags (srs, tag, value) VALUES (%s, %s, %s);'
+                sql = 'INSERT INTO tags (srs, tag, value) VALUES (?,?,?);'
                 params = [(sra, tag, value) for (tag, value) in all_tags.items()]
                 cursor.executemany(sql, params)
+                connection.db.commit()
 
     print(f'{len(biosamples)} total samples')
 
@@ -93,7 +79,8 @@ def find_runs(count, per_query=50):
     todo = connection.read("""
         SELECT srs FROM samples
         WHERE srr IS NULL
-        LIMIT %s""", (count,))
+        LIMIT ?""", (count,)
+    )
 
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
     print(f'Found {len(todo)} samples to process')
@@ -183,6 +170,8 @@ def _record_data(data):
             tosave['library_strategy'] = x.text
         for x in package.iter('LIBRARY_SOURCE'):
             tosave['library_source'] = x.text
+        for x in package.iter('INSTRUMENT_MODEL'):
+            tosave['instrument'] = x.text
 
         # If we found multiple runs, combine them into a single string
         if len(tosave['run']) == 0:
@@ -193,53 +182,58 @@ def _record_data(data):
             print(f"MULTIPLE RUNS! {len(tosave['run'])}")
             multiple_runs += 1
             delim = ';'
-            print(f"{sample}: {tosave['run']} ({delim.join(tosave['run'])})")
             tosave['run'] = delim.join(tosave['run'])
 
-        with connection.db.cursor() as cursor:
-            # If there is no SRA run identified, SKIP this entry.
-            # Sometimes a sample will have multiple entries, one with
-            # a run (and lots of metadata) and another without any info
-            # but DIFFERENT metadata. We only want ones that have a run.
-            if tosave.get('run') is not None:
-                cursor.execute("""
-                    UPDATE samples
-                    SET srr=%s
-                    WHERE srs=%s
-                """, (tosave.get('run'), sample))
-            else:
-                continue
+        # If there is no SRA run identified, SKIP this entry.
+        # Sometimes a sample will have multiple entries, one with
+        # a run (and lots of metadata) and another without any info
+        # but DIFFERENT metadata. We only want ones that have a run.
+        if tosave.get('run') is None:
+            continue
 
-            if tosave.get('project') is not None:
-                cursor.execute("""
-                    UPDATE samples
-                    SET project=%s
-                    WHERE srs=%s
-                """, (tosave.get('project'), sample))
-            if tosave.get('library_strategy') is not None:
-                cursor.execute("""
-                    UPDATE samples
-                    SET library_strategy=%s
-                    WHERE srs=%s
-                """, (tosave.get('library_strategy'), sample))
-            if tosave.get('library_source') is not None:
-                cursor.execute("""
-                    UPDATE samples
-                    SET library_source=%s
-                    WHERE srs=%s
-                """, (tosave.get('library_source'), sample))
-            if tosave.get('pubdate') is not None:
-                cursor.execute("""
-                    UPDATE samples
-                    SET pubdate=%s
-                    WHERE srs=%s
-                """, (tosave.get('pubdate'), sample))
-            if tosave.get('total_bases') is not None:
-                cursor.execute("""
-                    UPDATE samples
-                    SET total_bases=%s
-                    WHERE srs=%s
-                """, (tosave.get('total_bases'), sample))
+        connection.write("""
+            UPDATE samples
+            SET srr=?
+            WHERE srs=?
+        """, (tosave.get('run'), sample))
+
+
+        if tosave.get('project') is not None:
+            connection.write("""
+                UPDATE samples
+                SET project=?
+                WHERE srs=?
+            """, (tosave.get('project'), sample))
+        if tosave.get('library_strategy') is not None:
+            connection.write("""
+                UPDATE samples
+                SET library_strategy=?
+                WHERE srs=?
+            """, (tosave.get('library_strategy'), sample))
+        if tosave.get('library_source') is not None:
+            connection.write("""
+                UPDATE samples
+                SET library_source=?
+                WHERE srs=?
+            """, (tosave.get('library_source'), sample))
+        if tosave.get('pubdate') is not None:
+            connection.write("""
+                UPDATE samples
+                SET pubdate=?
+                WHERE srs=?
+            """, (tosave.get('pubdate'), sample))
+        if tosave.get('total_bases') is not None:
+            connection.write("""
+                UPDATE samples
+                SET total_bases=?
+                WHERE srs=?
+            """, (tosave.get('total_bases'), sample))
+        if tosave.get('instrument') is not None:
+            connection.write("""
+                UPDATE samples
+                SET instrument=?
+                WHERE srs=?
+            """, (tosave.get('instrument'), sample))
     return multiple_runs
 
 def write_lists(min_samples=10):
@@ -263,7 +257,7 @@ def write_lists(min_samples=10):
             GROUP BY 1
             ORDER BY 2 ASC
         ) AS samplecount
-        WHERE samplecount.tally >= %s""", (min_samples,))
+        WHERE samplecount.tally >= ?""", (min_samples,))
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
 
     project_samples = []
@@ -275,7 +269,7 @@ def write_lists(min_samples=10):
             WHERE srr IS NOT NULL
                 AND library_source IN ('GENOMIC','METAGENOMIC')
                 AND library_strategy='AMPLICON'
-            AND project=%s""", (project,))
+            AND project=?""", (project,))
         samples = [x[0] for x in samples]
         project_samples.append((project, len(samples)))
 
@@ -289,19 +283,18 @@ def write_lists(min_samples=10):
             for sample in samples:
                 f.write(f'{sample}\n')
 
-        with connection.db.cursor() as cursor:
-            sql = """
-            UPDATE samples SET exported=true
-            WHERE srr IN (
-                SELECT s.srr
-                FROM SAMPLES s
-                WHERE srr IS NOT NULL
-                    AND library_source IN ('GENOMIC','METAGENOMIC')
-                    AND library_strategy='AMPLICON'
-                AND project=%s
-            )
-            """
-            cursor.execute(sql, (project,))
+        sql = """
+        UPDATE samples SET exported=true
+        WHERE srr IN (
+            SELECT s.srr
+            FROM SAMPLES s
+            WHERE srr IS NOT NULL
+                AND library_source IN ('GENOMIC','METAGENOMIC')
+                AND library_strategy='AMPLICON'
+            AND project=?
+        )
+        """
+        connection.write(sql, (project,))
 
     with open(f'samples_per_project.csv','a') as f:
         for x in project_samples:
@@ -309,11 +302,11 @@ def write_lists(min_samples=10):
 
 
 if __name__ == "__main__":
-    #load_xml('txid408170', save_samples=True, save_tags=False)
+    load_xml('txid408170', 'txid408170.221220.xml', save_samples=True, save_tags=False)
     #load_xml('txid408170', save_samples=False, save_tags=True)
 
     # only command-line param is how many to do in this session
     #todo = 2000 if len(sys.argv) < 2 else sys.argv[1]
     #find_runs(todo, per_query=80)
-    write_lists(min_samples=50)
+    #write_lists(min_samples=50)
 
