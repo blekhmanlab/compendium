@@ -6,7 +6,9 @@ import xml.etree.ElementTree as ET
 
 import requests
 
+import config
 import db
+import results
 
 connection = db.Connection()
 
@@ -65,7 +67,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
 
     print(f'{len(biosamples)} total samples')
 
-def find_runs(count, per_query=50):
+def find_runs(count, per_query=80):
     """
     Queries the NCBI eUtils API to use sample IDs ("SRS" codes)
     to get information about runs ("SRR" codes) that can then
@@ -88,11 +90,11 @@ def find_runs(count, per_query=50):
     multiple_runs = 0
     while cursor < len(todo):
         if cursor > 0 and cursor % (per_query * 100) == 0:
-            time.sleep(30) # pause for a bit every 100 requests
+            time.sleep(10) # pause for a bit every 100 requests
         if cursor % 1000 == 0:
             print(f'COMPLETE: {cursor}')
 
-        url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool={config.tool}&email={config.email}&db=sra&usehistory=y&term='
+        url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool={config.Tool}&email={config.Email}&api_key={config.Key}&db=sra&usehistory=y&term='
         for x in range(0, per_query):
             url += f'{todo[cursor]}[accn] or '
             cursor += 1
@@ -106,14 +108,14 @@ def find_runs(count, per_query=50):
             r = requests.get(url)
         except:
             print('ERROR: Error sending request for webenv data. Skipping.')
-            time.sleep(3)
+            time.sleep(1)
             continue
 
         try:
             tree = ET.fromstring(r.text)
         except:
             print('ERROR: Couldnt parse response retrieving webenv data. Skipping.')
-            time.sleep(3)
+            time.sleep(1)
             continue
         
         webenv = tree.find('WebEnv')
@@ -122,10 +124,10 @@ def find_runs(count, per_query=50):
             print(r.text)
             print("WARNING: Got response without a 'webenv' field. Moving on.")
             print('\n---\n')
-            time.sleep(10)
+            time.sleep(1)
             continue
-        time.sleep(1)
-        url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?tool={config.tool}&email={config.email}&db=sra&query_key=1&WebEnv={webenv.text}'
+        time.sleep(0.5)
+        url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?tool={config.Tool}&email={config.Email}&db=sra&query_key=1&WebEnv={webenv.text}'
         if len(url) >1950:
             print(url)
             print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
@@ -139,7 +141,7 @@ def find_runs(count, per_query=50):
             time.sleep(10)
             continue
         multiple_runs += _record_data(tree)
-        time.sleep(1)
+
     print(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.\n\n")
 
 def _record_data(data):

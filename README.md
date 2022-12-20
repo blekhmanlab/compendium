@@ -1,5 +1,12 @@
 # HMC Metadata Ingest Service
 
+## Configuration
+Create a file called `config.py` with the following values, all of which are passed in API requests to NCBI:
+
+* **Tool**: The name of the application that's collecting data.
+* **Email**: A contact address NCBI administrators can reach.
+* **Key**: An NCBI API key.
+
 ## Downloading metadata from NCBI
 We currently extract relevant samples from search results on [the BioSample website](https://www.ncbi.nlm.nih.gov/biosample) using this query:
 ```
