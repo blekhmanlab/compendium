@@ -114,7 +114,8 @@ def find_runs(count, per_query=80):
         try:
             tree = ET.fromstring(r.text)
         except:
-            print('ERROR: Couldnt parse response retrieving webenv data. Skipping.')
+            print(f'ERROR: Couldnt parse response retrieving webenv data: {r.text}')
+            print('Skipping.')
             time.sleep(1)
             continue
         
@@ -311,6 +312,7 @@ if __name__ == "__main__":
         todo = 2000 if len(sys.argv) < 3 else sys.argv[2]
         find_runs(todo, per_query=80)
     elif sys.argv[1] == 'results':
-        results.Load_counts()
+        x = results.Load_asv_data('PRJNA842201')
+        print(x[0:2])
     #write_lists(min_samples=50)
 

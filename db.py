@@ -81,6 +81,15 @@ class Connection(object):
             )
         """)
 
+        self.write("""
+            CREATE TABLE IF NOT EXISTS tags (
+                tagid INTEGER PRIMARY KEY,
+                srs TEXT,
+                tag TEXT,
+                value TEXT
+            )
+        """)
+
     def __del__(self):
         """Closes the database connection when the Connection object
         is destroyed."""
