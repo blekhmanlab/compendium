@@ -5,3 +5,6 @@ pyvenv.cfg
 
 *.xlsx
 config.py
+
+results/
+compendium.db

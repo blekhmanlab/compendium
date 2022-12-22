@@ -9,6 +9,7 @@ import requests
 import config
 import db
 import results
+import summary_stats
 
 connection = db.Connection()
 
@@ -312,7 +313,6 @@ if __name__ == "__main__":
         todo = 2000 if len(sys.argv) < 3 else sys.argv[2]
         find_runs(todo, per_query=80)
     elif sys.argv[1] == 'results':
-        x = results.Load_asv_data('PRJNA842201')
-        print(x[0:2])
+        summary_stats.Process_summary('PRJNA842201')
     #write_lists(min_samples=50)
 
