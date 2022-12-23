@@ -1,5 +1,6 @@
 import glob
 import os
+import shutil
 
 import config
 
@@ -78,6 +79,45 @@ class Project:
                 os.remove(f)
             except OSError as e:
                 print(f'Error deleting {f}: {e.strerror}')
+
+    # NOTE: THIS METHOD DELETES FILES
+    def _remove_previous_dada(self):
+        """Deletes files created by the R scripts of a previous
+        processing attempt for a single project. This does NOT
+        remove files from the fastq/ directory, which are not
+        created by DADA2."""
+        if self.id is None or len(self.id) == 0:
+            raise(Exception(f'Project ID value is unexpected: "{self.id}"'))
+
+        try:
+            shutil.rmtree(f'{self.id}/intermediate')
+        except FileNotFoundError:
+                pass # no guarantee it was even made
+        except OSError as e:
+            print(f'Error deleting dir {self.id}/intermediate: {e.strerror}')
+
+        files = [
+            'filtered_out.rds',
+            'forward_error_model.pdf',
+            'reverse_error_model.pdf',
+            'err_forward_reads.rds',
+            'err_reverse_reads.rds',
+            'ASV.tsv', 'asv.rds',
+            'ASVs.fa','ASVs_counts.tsv',
+            'ASVs_taxonomy.tsv'
+        ]
+        for f in files:
+            try:
+                os.remove(f)
+            except FileNotFoundError:
+                pass # if it's gone, it's fine
+            except OSError as e:
+                print(f'Error deleting {f}: {e.strerror}')
+        # Don't delete the old summary file, just scoot it elsewhere
+        if os.path.exists(f'{self.id}/previous_summary.tsv'):
+            os.rename(f'{self.id}/previous_summary.tsv', f'{self.id}/previous_previous_summary.tsv')
+        if os.path.exists(f'{self.id}/summary.tsv'):
+            os.rename(f'{self.id}/summary.tsv', f'{self.id}/previous_summary.tsv')
 
     def print_errors(self):
         print(f'\nPROJECT {self.id} ({"paired" if self.paired else "single-end"})')

@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os
 import time
 import xml.etree.ElementTree as ET
 
@@ -236,15 +237,16 @@ def _record_data(data):
             """, (tosave.get('instrument'), sample))
     return multiple_runs
 
-def write_lists(min_samples=10):
+def write_lists(min_samples=10, max_samples=100000):
     """
-    Fetches a list of SRA projects from the local database and generates a list
+    Fetches a list of BioProjects from the local database and generates a list
     of samples for each project.
 
     Inputs:
         - min_samples: int. The minimum number of samples that a project needs to
             have to get a list generated.
     """
+    connection = connector.Connection()
 
     todo = connection.read("""
         SELECT samplecount.project
@@ -257,10 +259,12 @@ def write_lists(min_samples=10):
             GROUP BY 1
             ORDER BY 2 ASC
         ) AS samplecount
-        WHERE samplecount.tally >= ?""", (min_samples,))
+        WHERE samplecount.tally >= ?
+            AND samplecount.tally <= ?""", (min_samples,max_samples))
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
 
-    project_samples = []
+    if not os.path.exists('accession_lists'):
+        os.mkdir('accession_lists')
 
     for project in todo:
         samples = connection.read("""
@@ -271,31 +275,24 @@ def write_lists(min_samples=10):
                 AND library_strategy='AMPLICON'
             AND project=?""", (project,))
         samples = [x[0] for x in samples]
-        project_samples.append((project, len(samples)))
 
-        if os.path.exists(f'accession_lists/{project}/SraAccList.txt'):
+        if os.path.exists(f'accession_lists/{project}.txt'):
             print(f'Project already recorded: {project}')
             continue
 
-        os.mkdir(f'accession_lists/{project}')
-
-        with open(f'accession_lists/{project}/SraAccList.txt','w') as f:
+        with open(f'accession_lists/{project}.txt','w') as f:
             for sample in samples:
                 f.write(f'{sample}\n')
 
-        sql = """
-        UPDATE samples SET exported=true
-        WHERE srr IN (
-            SELECT s.srr
-            FROM SAMPLES s
-            WHERE srr IS NOT NULL
-                AND library_source IN ('GENOMIC','METAGENOMIC')
-                AND library_strategy='AMPLICON'
-            AND project=?
-        )
-        """
-        connection.write(sql, (project,))
-
-    with open(f'samples_per_project.csv','a') as f:
-        for x in project_samples:
-            f.write(f'{x[0]}, {x[1]}\n')
+        # sql = """
+        #     UPDATE samples SET exported=true
+        #     WHERE srr IN (
+        #         SELECT s.srr
+        #         FROM SAMPLES s
+        #         WHERE srr IS NOT NULL
+        #             AND library_source IN ('GENOMIC','METAGENOMIC')
+        #             AND library_strategy='AMPLICON'
+        #         AND project=?
+        #     )
+        # """
+        # connection.write(sql, (project,))
