@@ -5,6 +5,9 @@ class Project:
         self.id = name
         self.samples = samples
         self.sample_count = len(self.samples)
+        self.discard = False
+        self.re_run = False
+        self.errors = []
 
         self._check_chimera()
         self._check_merged()
@@ -13,13 +16,15 @@ class Project:
     def _check_chimera(self):
         """Determines what proportion of samples have excessive
         chimeric reads"""
-        self.chimeric_warn = 0
-        self.chimeric_error = 0
+        chimeric_warn = 0
+        chimeric_error = 0
         for sample in self.samples:
             if sample.chimeric_warn:
-                self.chimeric_warn += 1
+                chimeric_warn += 1
             if sample.chimeric_error:
-                self.chimeric_error += 1
+                chimeric_error += 1
+        self.chimeric_warn = chimeric_warn / len(self.samples)
+        self.chimeric_error = chimeric_error / len(self.samples)
 
     def _check_merged(self):
         """Determines what proportion of samples had an unacceptably
@@ -44,8 +49,24 @@ class Project:
 
     def _evaluate_flags(self):
         """Checks project stats against configured thresholds."""
-        self.merged_warn_rate = self.merged_warn / len(self.samples)
-        self.merged_error_rate = self.merged_error / len(self.samples)
+        if self.merged_warn > config.project_merged_worrisome:
+            self.re_run = True
+            self.errors.append(f'{int(self.merged_warn*100)}% of samples had warning for merged read count.')
+        if self.merged_error > config.project_merged_error:
+            self.re_run = True
+            self.errors.append(f'{int(self.merged_error*100)}% of samples had ERROR for merged read count.')
+
+        if self.chimeric_warn > config.project_chimera_worrisome:
+            self.discard = True
+            self.errors.append(f'{int(self.chimeric_warn*100)}% of samples had warning for chimeric read count.')
+        if self.chimeric_error > config.project_chimera_error:
+            self.discard = True
+            self.errors.append(f'{int(self.chimeric_error*100)}% of samples had ERROR for chimeric read count.')
+
+    def print_errors(self):
+        print(f'\nPROJECT {self.id} ({"paired" if self.paired else "single-end"})')
+        for error in self.errors:
+            print(f'  {error}')
 
     def __repr__(self):
         return f'(Project {self.id})'
@@ -110,4 +131,4 @@ def load_summary(project):
 
 def Process_summary(project):
     proj = Project(project, load_summary(project))
-    print(proj.samples)
+    proj.print_errors()
