@@ -1,3 +1,5 @@
+import subprocess
+
 import config
 
 class Project:
@@ -63,11 +65,24 @@ class Project:
             self.discard = True
             self.errors.append(f'{int(self.chimeric_error*100)}% of samples had ERROR for chimeric read count.')
 
+    # NOTE: THIS METHOD DELETES FILES
+    def Rerun_as_single_end(self):
+        """When a paired-end dataset should be re-evaluated without the reverse reads."""
+        if not self.paired:
+            raise('Cannot re-run project as single-end; it wasnt paired-end to begin with.')
+
+        delete = subprocess.run(
+            f'rm {self.id}/fastq/*_2.fastq',
+            shell=True
+        )
+        if delete.returncode != 0:
+            print(f'HUH???? Exit code for deletion of reverse reads was {delete}')
+            raise(Exception(delete.stdout))
+
     def print_errors(self):
         print(f'\nPROJECT {self.id} ({"paired" if self.paired else "single-end"})')
         for error in self.errors:
             print(f'  {error}')
-
     def __repr__(self):
         return f'(Project {self.id})'
     def __str__(self):
@@ -132,3 +147,4 @@ def load_summary(project):
 def Process_summary(project):
     proj = Project(project, load_summary(project))
     proj.print_errors()
+    return(proj)
