@@ -7,7 +7,7 @@ def Load_counts(project):
 
     to_write = []
 
-    with open(f'results/{project}/ASVs_counts.tsv', 'r') as file:
+    with open(f'{project}/ASVs_counts.tsv', 'r') as file:
         samples = file.readline().split('\t')[1:] # first entry is blank
         samples[-1] = samples[-1][:-1] # strip newline
         for line in file:
@@ -30,7 +30,7 @@ def Load_asv_data(project):
 
     asvs = {}
     # Get exact sequences
-    with open(f'results/{project}/ASVs.fa', 'r') as file:
+    with open(f'{project}/ASVs.fa', 'r') as file:
         while file:
             asv = file.readline()
             if asv == '': # empty line with no newline
@@ -43,7 +43,7 @@ def Load_asv_data(project):
             asvs[asv]=[seq]
 
     # The get taxonomic assignments
-    with open(f'results/{project}/ASVs_taxonomy.tsv', 'r') as file:
+    with open(f'{project}/ASVs_taxonomy.tsv', 'r') as file:
         file.readline() # skip header
         for line in file:
             line = line.split('\t')
@@ -52,4 +52,5 @@ def Load_asv_data(project):
 
     # example entry: ('ASV_1', 'CCTACGGG', 'Bacteria', 'Bacteroidota', 'Bacteroidia', 'Bacteroidales',
     #    'Bacteroidaceae', 'Bacteroides')
+    print(config.Email)
     return([tuple([asv]+values) for asv, values in asvs.items()])

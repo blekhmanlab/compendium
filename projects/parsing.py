@@ -116,7 +116,7 @@ def load_summary(project):
 
     samples = []
 
-    with open(f'results/{project}/summary.tsv', 'r') as file:
+    with open(f'{project}/summary.tsv', 'r') as file:
         headers = file.readline().split('\t')[1:] # first entry is blank
         headers[-1] = headers[-1][:-1] # strip newline
         headers = ['srr'] + headers
