@@ -29,14 +29,7 @@ def Load_asv_data(project):
     source."""
 
     asvs = {}
-    # Get taxonomic assignments first
-    with open(f'results/{project}/ASVs_taxonomy.tsv', 'r') as file:
-        file.readline() # skip header
-        for line in file:
-            line = line.split('\t')
-            line[-1] = line[-1][:-1]
-            asvs[line[0]] = line[1:]
-    # Then get exact sequences
+    # Get exact sequences
     with open(f'results/{project}/ASVs.fa', 'r') as file:
         while file:
             asv = file.readline()
@@ -47,7 +40,16 @@ def Load_asv_data(project):
             seq = file.readline()
             if len(seq) > 1:
                 seq = seq[0:-1] # strip trailing newline
-            asvs[asv].append(seq)
-    # example entry: ('ASV_1', 'Bacteria', 'Bacteroidota', 'Bacteroidia', 'Bacteroidales',
-    #    'Bacteroidaceae', 'Bacteroides', 'CCTACGGG')
+            asvs[asv]=[seq]
+
+    # The get taxonomic assignments
+    with open(f'results/{project}/ASVs_taxonomy.tsv', 'r') as file:
+        file.readline() # skip header
+        for line in file:
+            line = line.split('\t')
+            line[-1] = line[-1][:-1]
+            asvs[line[0]] += line[1:]
+
+    # example entry: ('ASV_1', 'CCTACGGG', 'Bacteria', 'Bacteroidota', 'Bacteroidia', 'Bacteroidales',
+    #    'Bacteroidaceae', 'Bacteroides')
     return([tuple([asv]+values) for asv, values in asvs.items()])
