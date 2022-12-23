@@ -20,7 +20,13 @@ class Connection(object):
     def write(self, query, params=None):
         cursor = self.db.cursor()
         if params is not None:
-            cursor.execute(query, params)
+            if isinstance(params, tuple):
+                cursor.execute(query, params)
+            elif isinstance(params, list):
+                cursor.executemany(query, params)
+            else:
+                raise(Exception('Parameters must either be in a tuple (execute) or list (executemany)'))
+
         else:
             cursor.execute(query)
         self.db.commit()
@@ -49,7 +55,7 @@ class Connection(object):
 
             for result in cursor:
                 results.append(result)
-            
+
             cursor.close()
 
             return results

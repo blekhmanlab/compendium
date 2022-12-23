@@ -55,11 +55,9 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
                 elif 'attribute_name' in tag.attrib.keys():
                     all_tags[tag.attrib['attribute_name']] = text
             # add all the tags to the tag table
-            with connection.db.cursor() as cursor:
-                sql = 'INSERT INTO tags (srs, tag, value) VALUES (?,?,?);'
-                params = [(sra, tag, value) for (tag, value) in all_tags.items()]
-                cursor.executemany(sql, params)
-                connection.db.commit()
+            sql = 'INSERT INTO tags (srs, tag, value) VALUES (?,?,?);'
+            params = [(sra, tag, value) for (tag, value) in all_tags.items()]
+            connection.write(sql, params)
 
     print(f'{len(biosamples)} total samples')
 
