@@ -1,4 +1,5 @@
-import subprocess
+import glob
+import os
 
 import config
 
@@ -71,13 +72,12 @@ class Project:
         if not self.paired:
             raise('Cannot re-run project as single-end; it wasnt paired-end to begin with.')
 
-        delete = subprocess.run(
-            f'rm {self.id}/fastq/*_2.fastq',
-            shell=True
-        )
-        if delete.returncode != 0:
-            print(f'HUH???? Exit code for deletion of reverse reads was {delete}')
-            raise(Exception(delete.stdout))
+        files = glob.glob(f'{self.id}/fastq/*_2.fastq')
+        for f in files:
+            try:
+                os.remove(f)
+            except OSError as e:
+                print(f'Error deleting {f}: {e.strerror}')
 
     def print_errors(self):
         print(f'\nPROJECT {self.id} ({"paired" if self.paired else "single-end"})')

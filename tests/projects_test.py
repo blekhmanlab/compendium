@@ -1,5 +1,6 @@
 import os
-import subprocess
+from pathlib import Path
+import shutil
 import sys
 
 import pytest
@@ -12,24 +13,19 @@ def fastq_dir_paired():
     """Creates a mock fastq/ directory with files in it, which we can
     test are being deleted as expected."""
     # Make a fastq directory
-    subprocess.run(
-        ['mkdir', 'tests/fastq'],
-        stdout=subprocess.PIPE, text=True
-    )
+    os.mkdir('tests/fastq')
     # create forward and reverse fastq files for each sample
     with open('tests/SraAccList.txt', 'r') as f:
         for sample in f.readlines():
             for ext in [1,2]:
-                subprocess.run(
-                    ['touch', f'tests/fastq/{sample[:-1]}_{ext}.fastq'],
-                    stdout=subprocess.PIPE, text=True
-                )
+                Path(f'tests/fastq/{sample[:-1]}_{ext}.fastq').touch()
+
     yield True
     # cleanup
-    subprocess.run(
-        ['rm', '-rf', 'tests/fastq'],
-        stdout=subprocess.PIPE, text=True
-    )
+    try:
+       shutil.rmtree('tests/fastq')
+    except OSError as e:
+        print(f'Error deleting dir tests/fastq: {e.strerror}')
 
 def test_load_summary():
     samples = projects.parsing.load_summary('tests')
