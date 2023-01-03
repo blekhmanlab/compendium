@@ -101,7 +101,7 @@ class Project:
     def Rerun_as_single_end(self):
         """When a paired-end dataset should be re-evaluated without the reverse reads."""
         if not self.paired:
-            raise('Cannot re-run project as single-end; it wasnt paired-end to begin with.')
+            raise(Exception('Cannot re-run project as single-end; it wasnt paired-end to begin with.'))
 
         self._remove_previous_dada()
         self._remove_reverse_reads()
