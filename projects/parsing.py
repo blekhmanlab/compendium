@@ -5,14 +5,44 @@ import shutil
 import config
 
 class Project:
-    def __init__(self, name, samples):
-        self.id = name
-        self.samples = samples
-        self.sample_count = len(self.samples)
-        self.discard = False
-        self.re_run = False
-        self.errors = []
+    def __init__(self, name):
+        """
+        Each Project instance stores metadata about a single BioProject and
+        """
+        self.id = name # BioProject ID, e.g. PRJNA12345
+        self.samples = [] # each item is instance of Sample. Generated from parsing results.
+        self.paired = None # is the project's data paired-end?
+        self.discard = False # should the project be discarded?
+        self.re_run = False # should the project be re-run?
+        self.errors = [] # list of issues discovered in the pipeline results
 
+    ##########################
+    # Methods for evaluating processing results
+    ##########################
+    def Load_results_summary(self):
+        """Loads a tab-delimited file output by the DADA2 script in which each row
+        describes the read counts for a single sample at various steps.
+
+        Side effects:
+        - populates the self.samples list with items of class Sample
+        - sets the self.sample_count value
+        - performs validation on dada2 results to check for problems with read counts
+        - Sets the self.discard and self.re_run flags
+        """
+
+        with open(f'{self.id}/summary.tsv', 'r') as file:
+            headers = file.readline().split('\t')[1:] # first entry is blank
+            headers[-1] = headers[-1][:-1] # strip newline
+            headers = ['srr'] + headers
+            for line in file:
+                line = line.split('\t')
+                line[-1] = line[-1][:-1] # newline
+                data = {}
+                for i, entry in enumerate(line):
+                    data[headers[i]] = entry
+                self.samples.append(Sample(data))
+
+        self.sample_count = len(self.samples)
         self._check_chimera()
         self._check_merged()
         self._evaluate_flags()
@@ -73,6 +103,14 @@ class Project:
         if not self.paired:
             raise('Cannot re-run project as single-end; it wasnt paired-end to begin with.')
 
+        self._remove_previous_dada()
+        self._remove_reverse_reads()
+        #TODO: actually re-run pipeline
+
+    # NOTE: THIS METHOD DELETES FILES
+    def _remove_reverse_reads(self):
+        """Deletes all reverse read files extracted from a project's SRA file"""
+
         files = glob.glob(f'{self.id}/fastq/*_2.fastq')
         for f in files:
             try:
@@ -120,7 +158,12 @@ class Project:
             os.rename(f'{self.id}/summary.tsv', f'{self.id}/previous_summary.tsv')
 
     def print_errors(self):
-        print(f'\nPROJECT {self.id} ({"paired" if self.paired else "single-end"})')
+        if self.paired is None:
+            strategy = 'unknown sequencing strategy'
+        else:
+            strategy = "paired" if self.paired else "single-end"
+
+        print(f'\nPROJECT {self.id} ({strategy})')
         for error in self.errors:
             print(f'  {error}')
     def __repr__(self):
@@ -164,27 +207,8 @@ class Sample:
     def __str__(self):
         return f'Sample {self.srr}'
 
-
-def load_summary(project):
-    """Loads a tab-delimited file output by the DADA2 script in which each row
-    describes the read counts for a single sample at various steps."""
-
-    samples = []
-
-    with open(f'{project}/summary.tsv', 'r') as file:
-        headers = file.readline().split('\t')[1:] # first entry is blank
-        headers[-1] = headers[-1][:-1] # strip newline
-        headers = ['srr'] + headers
-        for line in file:
-            line = line.split('\t')
-            line[-1] = line[-1][:-1] # newline
-            data = {}
-            for i, entry in enumerate(line):
-                data[headers[i]] = entry
-            samples.append(Sample(data))
-    return(samples)
-
 def Process_summary(project):
-    proj = Project(project, load_summary(project))
+    proj = Project(project)
+    #proj.Load_results_summary()
     proj.print_errors()
     return(proj)

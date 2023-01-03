@@ -10,7 +10,6 @@ if __name__ == "__main__":
         todo = 2000 if len(sys.argv) < 3 else sys.argv[2]
         db.loader.find_runs(todo, per_query=80)
     elif sys.argv[1] == 'results':
-        print(results.parsing.Load_asv_data('PRJNA842201'))
         projects.parsing.Process_summary('PRJNA842201')
     elif sys.argv[1] == 'tags':
         db.loader.load_xml('txid408170', 'txid408170.221220.xml',
