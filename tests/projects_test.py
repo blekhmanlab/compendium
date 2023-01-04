@@ -13,14 +13,14 @@ def test_load_summary(Dada_dir):
     proj.Load_results_summary()
     assert len(proj.samples) == 6
 
-def test_Project_Rerun_as_single_end(Dada_dir):
+def test_Project_remove_reverse_reads(Dada_dir):
     proj = projects.parsing.Project('PRRJA12345')
     proj.Load_results_summary()
     # make sure we're starting with paired-end files
     assert len(os.listdir('PRRJA12345/fastq')) == 12
 
     # Get ready to re-run as single end by deleting the reverse reads
-    proj.Rerun_as_single_end()
+    proj._remove_reverse_reads()
 
     # Make sure half the files are gone
     fastqs = os.listdir('PRRJA12345/fastq')

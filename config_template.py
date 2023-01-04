@@ -2,6 +2,8 @@ Tool='compendium'
 Email='email_goes_here'
 Key='12345'
 
+# Where does the pipeline code live?
+snakemake_git = 'git@github.com:blekhmanlab/snakemake-compendium.git'
 
 ############### Sample-level settings ###############
 #

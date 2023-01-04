@@ -1,3 +1,4 @@
+from datetime import datetime
 import glob
 import os
 import shutil
@@ -15,6 +16,58 @@ class Project:
         self.discard = False # should the project be discarded?
         self.re_run = False # should the project be re-run?
         self.errors = [] # list of issues discovered in the pipeline results
+
+    ##########################
+    # Methods for initializing the pipeline
+    ##########################
+    def _generate_accession_file(self, connection):
+        """
+        Fetches a list of BioProjects from the local database and generates a list
+        of samples for each project.
+
+        Inputs:
+            - connection: An instance of type db.connector.Connection
+        """
+        if self.id is None or len(self.id) < 3:
+            raise(Exception(f'Project ID "{self.id}" is not valid. Bailing.'))
+
+        samples = connection.read("""
+            SELECT s.srr
+            FROM SAMPLES s
+            WHERE srr IS NOT NULL
+                AND library_source IN ('GENOMIC','METAGENOMIC')
+                AND library_strategy='AMPLICON'
+            AND project=?""", (self.id,))
+        samples = [x[0] for x in samples]
+
+        if os.path.exists(f'{self.id}/SraAccList.txt'):
+            print(f'Project already recorded: {self.id}')
+            return False
+
+        with open(f'{self.id}/SraAccList.txt','w') as f:
+            for sample in samples:
+                f.write(f'{sample}\n')
+        return True
+
+    def Initialize_pipeline(self, connection):
+        """
+        Runs a project through the pipeline for the first time.
+        """
+        os.system(f"git clone --single-branch --no-tags --depth 1 {config.snakemake_git} {self.id}")
+        self._generate_accession_file(connection)
+
+    def RUN(self):
+        """
+        Starts the pipeline!!!
+        """
+        timestamp = int(round(datetime.now().timestamp()))
+        # go to the project's directory, start the pipeline, then return to
+        # wherever we were before
+        original = os.getcwd()
+        os.chdir(self.id)
+        os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log run_snakemake.slurm')
+        os.chdir(original)
+
 
     ##########################
     # Methods for evaluating processing results

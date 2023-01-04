@@ -1,6 +1,7 @@
 import sys # for the command-line params
 
 import db.loader
+import db.connector
 import results.parsing
 import projects.parsing
 
@@ -18,3 +19,8 @@ if __name__ == "__main__":
         minsamples = 50 if len(sys.argv) < 3 else int(sys.argv[2])
         maxsamples = 50000 if len(sys.argv) < 4 else int(sys.argv[3])
         db.loader.write_lists(minsamples, maxsamples)
+    elif sys.argv[1] == 'runit':
+        proj = projects.parsing.Project('PRJNA842201')
+        connection = db.connector.Connection()
+        proj.Initialize_pipeline(connection)
+        proj.RUN()
