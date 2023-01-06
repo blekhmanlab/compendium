@@ -20,7 +20,11 @@ if __name__ == "__main__":
         maxsamples = 50000 if len(sys.argv) < 4 else int(sys.argv[3])
         db.loader.write_lists(minsamples, maxsamples)
     elif sys.argv[1] == 'runit':
-        proj = projects.parsing.Project('PRJNA842201')
+        # id = 'PRJNA842201'
+        if len(sys.argv) < 3:
+            print("NO PROJECT ID PASSED TO COMMAND. Exiting.")
+            exit(1)
+        proj = projects.parsing.Project(sys.argv[2])
         connection = db.connector.Connection()
         proj.Initialize_pipeline(connection)
         proj.RUN()
