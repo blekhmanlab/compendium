@@ -53,7 +53,7 @@ class Project:
         """
         Runs a project through the pipeline for the first time.
         """
-        os.system(f"git clone --single-branch --no-tags --depth 1 {config.snakemake_git} {self.id}")
+        os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
         self._generate_accession_file(connection)
 
     def RUN(self):
@@ -65,7 +65,7 @@ class Project:
         # wherever we were before
         original = os.getcwd()
         os.chdir(self.id)
-        os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log run_snakemake.slurm')
+        os.system(f'sbatch --job-name={self.id[5:]} -o {self.id}.{timestamp}.log run_snakemake.slurm')
         os.chdir(original)
 
 
