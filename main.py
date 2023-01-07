@@ -25,6 +25,9 @@ if __name__ == "__main__":
             print("NO PROJECT ID PASSED TO COMMAND. Exiting.")
             exit(1)
         proj = projects.parsing.Project(sys.argv[2])
-        connection = db.connector.Connection()
-        proj.Initialize_pipeline(connection)
+
+        # skip initialization if it's just to restart snakemake
+        if len(sys.argv) < 4 or sys.argv[3] != 'again':
+            connection = db.connector.Connection()
+            proj.Initialize_pipeline(connection)
         proj.RUN()
