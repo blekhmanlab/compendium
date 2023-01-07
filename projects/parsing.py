@@ -328,7 +328,7 @@ class Sample:
         self.merged_warn = self.merged_percent < config.merged_worrisome
         self.merged_error = self.merged_percent < config.merged_error
 
-    def _check_stages():
+    def _check_stages(self):
         self.retained_percent = self.nonchim / self.input
         # TODO: add a check here to measure how many reads dropped
         # out between every stage
