@@ -72,6 +72,56 @@ class Project:
         if x != 0:
             raise(Exception(f'Call to git returned non-zero exit code {x}'))
 
+    def Check_progress(self):
+        to_check = [f'{self.id}/ASVs.fa', f'{self.id}/ASVs_counts.tsv', f'{self.id}/ASVs_taxonomy.tsv']
+
+        if False not in [os.path.exists(x) for x in to_check]:
+            print('DONE!')
+            return True
+
+
+        print('======Initialization======')
+        status = '✓' if os.path.isdir(self.id) else 'X'
+        print(f'{status}   Directory created')
+
+        status = '✓' if os.path.isdir(f'{self.id}/workflow') else 'X'
+        print(f'{status}   Repository cloned')
+
+        status = '✓' if os.path.exists(f'{self.id}/SraAccList.txt') else 'X'
+        print(f'{status}   Accession list created')
+
+        status = '✓' if os.path.isdir(f'{self.id}/venv') else 'X'
+        print(f'{status}   Virtual environment created')
+
+        status = '✓' if os.path.exists(f'{self.id}/venv/bin/snakemake') else 'X'
+        print(f'{status}   Snakemake installed')
+
+
+        print('\n======Pipeline======')
+        status = '✓' if os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_sra_prefetch') else 'X'
+        print(f'{status}   1/6 Prefetch job started')
+
+        status = '✓' if os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_sra_to_fastq') else 'X'
+        print(f'{status}   2/6 SRA data extraction job started')
+
+        status = '✓' if os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_filter') else 'X'
+        print(f'{status}   3/6 FASTQ filtering job started')
+
+        status = '✓' if os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_errormodel') else 'X'
+        print(f'{status}   4/6 Error modeling job started')
+
+        status = '✓' if os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_make_asv_table') else 'X'
+        print(f'{status}   5/6 ASV calculation job started')
+
+        status = '✓' if os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_assign_taxonomy') else 'X'
+        print(f'{status}   6/6 Taxonomic assignment job started')
+
+        print('\n======Results======')
+        for filename in to_check:
+            status = '✓' if os.path.exists(f'{self.id}/{filename}') else 'X'
+            print(f'{status}   Result file: {filename}')
+
+
     ##########################
     # Methods for evaluating processing results
     ##########################

@@ -35,3 +35,9 @@ if __name__ == "__main__":
         proj = projects.parsing.Project(sys.argv[2])
         # skip initialization if it's just to restart snakemake
         proj.RUN()
+    elif sys.argv[1] == 'status':
+        if len(sys.argv) < 3:
+            print("NO PROJECT ID PASSED TO COMMAND. Exiting.")
+            exit(1)
+        proj = projects.parsing.Project(sys.argv[2])
+        proj.Check_progress()
