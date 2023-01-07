@@ -53,7 +53,9 @@ class Project:
         """
         Runs a project through the pipeline for the first time.
         """
-        os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
+        x = os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
+        if x != 0:
+            raise(Exception(f'Call to git returned non-zero exit code {x}'))
         self._generate_accession_file(connection)
 
     def RUN(self):
@@ -61,13 +63,14 @@ class Project:
         Starts the pipeline!!!
         """
         timestamp = int(round(datetime.now().timestamp()))
-        # go to the project's directory, start the pipeline, then return to
-        # wherever we were before
         original = os.getcwd()
-        os.chdir(self.id)
-        os.system(f'sbatch --job-name={self.id[5:]} -o {self.id}.{timestamp}.log run_snakemake.slurm')
+        os.chdir(self.id) # Need to call snakemake from the project dir
+        x = os.system(f'sbatch --job-name={self.id[5:]} -o {self.id}.{timestamp}.log run_snakemake.slurm')
+        # Don't check if the sbatch command errored until AFTER we go back to
+        # the directory we started in:
         os.chdir(original)
-
+        if x != 0:
+            raise(Exception(f'Call to git returned non-zero exit code {x}'))
 
     ##########################
     # Methods for evaluating processing results
