@@ -35,7 +35,7 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'status':
         if len(sys.argv) < 3:
             exit(1)
-        id = sys.argv[2]
+        pid = sys.argv[2]
 
         proj = projects.parsing.Project(pid)
         if proj.Check_progress(): # true if it's complete
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'eval':
         if len(sys.argv) < 3:
             exit(1)
-        id = sys.argv[2]
+        pid = sys.argv[2]
 
         proj = projects.parsing.Project(pid)
         if not proj.Check_progress(): # true if it's complete
