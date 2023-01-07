@@ -63,12 +63,7 @@ class Project:
         Starts the pipeline!!!
         """
         timestamp = int(round(datetime.now().timestamp()))
-        original = os.getcwd()
-        os.chdir(self.id) # Need to call snakemake from the project dir
-        x = os.system(f'sbatch --job-name={self.id[5:]} -o {self.id}.{timestamp}.log run_snakemake.slurm')
-        # Don't check if the sbatch command errored until AFTER we go back to
-        # the directory we started in:
-        os.chdir(original)
+        x = os.system(f'sbatch --job-name={self.id[5:]} -o {self.id}.{timestamp}.log --chdir={self.id} run_snakemake.slurm')
         if x != 0:
             raise(Exception(f'Call to git returned non-zero exit code {x}'))
 
@@ -104,14 +99,15 @@ class Project:
             })
         ]
 
+        arrow = True # point at the earliest test that fails
         for category in tests:
-            arrow = True # point at the earliest test that fails
             print(f'\n======{category[0]}======')
             for string, test in category[1].items():
-                print(f"{'✓' if test else 'X'}   {string} {'  <<<<<<<<<<<' if arrow and not test else ''}")
+                print(f"{'✓' if test else 'X'}   {string} {'  <<< XXXXXXX <<<' if arrow and not test else ''}")
                 if arrow and not test:
                     arrow = False # only print one arrow
 
+        return(False)
 
     ##########################
     # Methods for evaluating processing results
@@ -160,8 +156,8 @@ class Project:
     def _check_merged(self):
         """Determines what proportion of samples had an unacceptably
         low proportion of reads merged"""
-        merged_warn = 0
-        merged_error = 0
+        warncount = 0
+        errorcount = 0
         self.paired = True
 
         for sample in self.samples:
@@ -172,11 +168,11 @@ class Project:
                 break
 
             if sample.merged_warn:
-                self.merged_warn += 1
+                warncount += 1
             if sample.merged_error:
-                self.merged_error += 1
-        self.merged_warn = merged_warn / len(self.samples)
-        self.merged_error = merged_error / len(self.samples)
+                errorcount += 1
+        self.merged_warn = warncount / len(self.samples)
+        self.merged_error = errorcount / len(self.samples)
 
     def _evaluate_flags(self):
         """Checks project stats against configured thresholds."""
@@ -187,6 +183,22 @@ class Project:
             self.re_run = True
             self.errors.append(f'{int(self.merged_error*100)}% of samples had ERROR for merged read count.')
 
+        # Don't bother checking the percentage of reads retained if the project
+        # is going to be re-run as single-ended anyway. We could probably catch
+        # a few doomed projects earlier if we check it here, but the logic is more
+        # complicated than we should bother with right now.
+        if self.re_run:
+            return
+
+        # Read retention
+        if self.retained_warn > config.project_retained_worrisome:
+            self.discard = True
+            self.errors.append(f'{int(self.retained_warn*100)}% of samples had warning for reads retained.')
+        if self.retained_error > config.project_retained_error:
+            self.discard = True
+            self.errors.append(f'{int(self.retained_error*100)}% of samples had ERROR for reads retained.')
+
+        # Chimeric reads
         if self.chimeric_warn > config.project_chimera_worrisome:
             self.discard = True
             self.errors.append(f'{int(self.chimeric_warn*100)}% of samples had warning for chimeric read count.')
@@ -194,7 +206,7 @@ class Project:
             self.discard = True
             self.errors.append(f'{int(self.chimeric_error*100)}% of samples had ERROR for chimeric read count.')
 
-    # NOTE: THIS METHOD DELETES FILES
+    # NOTE: THIS METHOD DELETES FILES AND STARTS PIPELINES
     def Rerun_as_single_end(self):
         """When a paired-end dataset should be re-evaluated without the reverse reads."""
         if not self.paired:
@@ -202,7 +214,8 @@ class Project:
 
         self._remove_previous_dada()
         self._remove_reverse_reads()
-        #TODO: actually re-run pipeline
+
+        self.RUN()
 
     # NOTE: THIS METHOD DELETES FILES
     def _remove_reverse_reads(self):
@@ -263,6 +276,18 @@ class Project:
         print(f'\nPROJECT {self.id} ({strategy})')
         for error in self.errors:
             print(f'  {error}')
+
+    def REACT(self):
+        '''Acts on the results of the pipeline completion'''
+        if self.discard:
+            print('Heres where we would have deleted this project')
+            return(True)
+        if self.re_run:
+            #self.Rerun_as_single_end()
+            print('Heres where we would have re-run the project as single-end')
+            return(True)
+
+
     def __repr__(self):
         return f'(Project {self.id})'
     def __str__(self):
@@ -277,13 +302,17 @@ class Sample:
         self.forward = int(data.get('forwd'))
         self.length_filter = int(data.get('length'))
         self.nonchim = int(data.get('nonchim'))
-        self._check_chimera()
 
         self.is_paired = 'revse' in data.keys()
+        self.reverse = None
+        self.merged = None
+
+        self._check_chimera()
         if self.is_paired:
             self.reverse = int(data.get('revse'))
             self.merged = int(data.get('merged'))
             self._check_merged()
+        self._check_stages()
 
     def _check_chimera(self):
         """Calculates the proportion of chimeric reads found
@@ -299,13 +328,14 @@ class Sample:
         self.merged_warn = self.merged_percent < config.merged_worrisome
         self.merged_error = self.merged_percent < config.merged_error
 
+    def _check_stages():
+        self.retained_percent = self.nonchim / self.input
+        # TODO: add a check here to measure how many reads dropped
+        # out between every stage
+        self.retained_warn = self.retained_percent < config.retained_worrisome
+        self.retained_error = self.retained_percent < config.retained_error
+
     def __repr__(self):
         return f'(Sample {self.srr})'
     def __str__(self):
         return f'Sample {self.srr}'
-
-def Process_summary(project):
-    proj = Project(project)
-    #proj.Load_results_summary()
-    proj.print_errors()
-    return(proj)

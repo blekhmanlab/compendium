@@ -20,9 +20,7 @@ if __name__ == "__main__":
         maxsamples = 50000 if len(sys.argv) < 4 else int(sys.argv[3])
         db.loader.write_lists(minsamples, maxsamples)
     elif sys.argv[1] == 'runit':
-        # id = 'PRJNA842201'
         if len(sys.argv) < 3:
-            print("NO PROJECT ID PASSED TO COMMAND. Exiting.")
             exit(1)
         proj = projects.parsing.Project(sys.argv[2])
         connection = db.connector.Connection()
@@ -30,14 +28,28 @@ if __name__ == "__main__":
         proj.RUN()
     elif sys.argv[1] == 'again':
         if len(sys.argv) < 3:
-            print("NO PROJECT ID PASSED TO COMMAND. Exiting.")
             exit(1)
         proj = projects.parsing.Project(sys.argv[2])
         # skip initialization if it's just to restart snakemake
         proj.RUN()
     elif sys.argv[1] == 'status':
         if len(sys.argv) < 3:
-            print("NO PROJECT ID PASSED TO COMMAND. Exiting.")
             exit(1)
-        proj = projects.parsing.Project(sys.argv[2])
-        proj.Check_progress()
+        id = sys.argv[2]
+
+        proj = projects.parsing.Project(pid)
+        if proj.Check_progress(): # true if it's complete
+            proj.Load_results_summary()
+            proj.print_errors()
+    elif sys.argv[1] == 'eval':
+        if len(sys.argv) < 3:
+            exit(1)
+        id = sys.argv[2]
+
+        proj = projects.parsing.Project(pid)
+        if not proj.Check_progress(): # true if it's complete
+            exit(0)
+
+        # proj.Load_results_summary()
+        # proj.print_errors()
+        proj.REACT()
