@@ -136,6 +136,8 @@ class Project:
                 self.samples.append(Sample(data))
 
         self.sample_count = len(self.samples)
+
+        self._check_retained()
         self._check_chimera()
         self._check_merged()
         self._evaluate_flags()
@@ -173,6 +175,20 @@ class Project:
                 errorcount += 1
         self.merged_warn = warncount / len(self.samples)
         self.merged_error = errorcount / len(self.samples)
+
+    def _check_retained(self):
+        """Determines what proportion of samples had an unacceptably
+        low proportion of reads merged"""
+        warncount = 0
+        errorcount = 0
+
+        for sample in self.samples:
+            if sample.retained_warn:
+                warncount += 1
+            if sample.retained_error:
+                errorcount += 1
+        self.retained_warn = warncount / len(self.samples)
+        self.retained_error = errorcount / len(self.samples)
 
     def _evaluate_flags(self):
         """Checks project stats against configured thresholds."""
