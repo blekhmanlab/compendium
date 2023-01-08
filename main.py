@@ -38,16 +38,18 @@ if __name__ == "__main__":
         pid = sys.argv[2]
 
         proj = projects.parsing.Project(pid)
-        if proj.Check_progress(): # true if it's complete
+        if proj.Check_if_done(): # true if it's complete
             proj.Load_results_summary()
             proj.print_errors()
+
     elif sys.argv[1] == 'eval':
         if len(sys.argv) < 3:
             exit(1)
         pid = sys.argv[2]
 
         proj = projects.parsing.Project(pid)
-        if not proj.Check_progress(): # true if it's complete
+        if not proj.Check_if_done(): # true if it's complete
+            proj.Report_progress()
             exit(0)
 
         proj.Load_results_summary()
@@ -55,3 +57,32 @@ if __name__ == "__main__":
 
         connection = db.connector.Connection()
         proj.REACT(connection)
+    elif sys.argv[1] == 'FORWARD':
+        connection = db.connector.Connection()
+        todo = connection.read("""
+            SELECT project FROM status
+            WHERE status NOT IN ('done','failed')
+        )
+        """
+        todo = [x[0] for x in todo]
+        print(todo)
+
+        not_done = []
+        for pid in todo:
+            proj = projects.parsing.Project(pid)
+            if not proj.Check_if_done():
+                not_done.append(pid)
+                continue
+            proj.Load_results_summary()
+            proj.print_errors()
+            connection = db.connector.Connection()
+            proj.REACT(connection)
+        if len(not_done) > 0:
+            print("\n------------\nSome projects are incomplete:")
+        for pid not_done:
+            confirm = input('Print next project?')
+            if confirm != 'y':
+                print('Response was not "y"; bailing.')
+                exit(0)
+            proj = projects.parsing.Project(pid)
+            proj.Report_progress()

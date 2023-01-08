@@ -73,7 +73,7 @@ class Project:
         """
         Runs a project through the pipeline for the first time.
         """
-       connection.write('INSERT INTO status (project, status) VALUES (?, ?);', (self.id, 'initialized'))
+        connection.write('INSERT INTO status (project, status) VALUES (?, ?);', (self.id, 'initialized'))
 
         x = os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
         if x != 0:
@@ -90,12 +90,19 @@ class Project:
         if x != 0:
             raise(Exception(f'Call to git returned non-zero exit code {x}'))
 
-    def Check_progress(self):
-        to_check = [f'{self.id}/ASVs.fa', f'{self.id}/ASVs_counts.tsv', f'{self.id}/ASVs_taxonomy.tsv']
+    def Check_if_done(self):
+        to_check = [
+            f'{self.id}/ASVs.fa',
+            f'{self.id}/ASVs_counts.tsv',
+            f'{self.id}/ASVs_taxonomy.tsv'
+        ]
+        # return True if all the required files are present, otherwise False
+        return(False not in [os.path.exists(x) for x in to_check])
 
-        if False not in [os.path.exists(x) for x in to_check]:
+    def Check_progress(self):
+        if self.Check_if_done:
             print('DONE!')
-            return True
+            return(True)
 
         tests = [
             ('Initialization',
