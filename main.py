@@ -63,7 +63,7 @@ if __name__ == "__main__":
             SELECT project FROM status
             WHERE status NOT IN ('done','failed')
         )
-        """
+        """)
         todo = [x[0] for x in todo]
         print(todo)
 

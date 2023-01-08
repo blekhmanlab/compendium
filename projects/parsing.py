@@ -99,7 +99,7 @@ class Project:
         # return True if all the required files are present, otherwise False
         return(False not in [os.path.exists(x) for x in to_check])
 
-    def Check_progress(self):
+    def Report_progress(self):
         if self.Check_if_done:
             print('DONE!')
             return(True)
