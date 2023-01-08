@@ -14,12 +14,12 @@ retained_error = 0.59 # MINIMUM
 # When evaluating the proportion of reads removed from a sample,
 # what thresholds should be used for the "warning" and "error" levels?
 chimera_worrisome = 0.10
-chimera_error = 0.60 # MAXIMUM
+chimera_error = 0.20 # MAXIMUM
 #
 # When evaluating the proportion of forward reads removed from a
 # sample, what thresholds should be used for the "warning" and "error" levels?
-merged_worrisome = 0.65
-merged_error = 0.50 # MINIMUM
+merged_worrisome = 0.80
+merged_error = 0.65 # MINIMUM
 ##############################################################
 
 

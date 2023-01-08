@@ -50,6 +50,8 @@ if __name__ == "__main__":
         if not proj.Check_progress(): # true if it's complete
             exit(0)
 
-        # proj.Load_results_summary()
-        # proj.print_errors()
-        proj.REACT()
+        proj.Load_results_summary()
+        proj.print_errors()
+
+        connection = db.connector.Connection()
+        proj.REACT(connection)

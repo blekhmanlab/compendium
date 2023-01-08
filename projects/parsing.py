@@ -31,32 +31,55 @@ class Project:
         if self.id is None or len(self.id) < 3:
             raise(Exception(f'Project ID "{self.id}" is not valid. Bailing.'))
 
-        samples = connection.read("""
-            SELECT s.srr
-            FROM SAMPLES s
-            WHERE srr IS NOT NULL
-                AND library_source IN ('GENOMIC','METAGENOMIC')
-                AND library_strategy='AMPLICON'
-            AND project=?""", (self.id,))
-        samples = [x[0] for x in samples]
+        connection.write("""
+            UPDATE samples
+            SET srr=?
+            WHERE srs=?
+        """, (tosave.get('run'), sample))
+
+        if len(samples) == 0:
+            raise(Exception(f'Project {self.id} has no samples in the database!'))
 
         if os.path.exists(f'{self.id}/SraAccList.txt'):
-            print(f'Project already recorded: {self.id}')
-            return False
+            raise(Exception(f'Project already initialized: {self.id}'))
 
         with open(f'{self.id}/SraAccList.txt','w') as f:
             for sample in samples:
                 f.write(f'{sample}\n')
         return True
 
+    def _set_status(self, connection, status, note1=None, note2=None):
+        """Updates the project's information in the table that tracks project progress"""
+        connection.write("""
+            UPDATE status
+            SET status=?
+            WHERE project=?
+        """, (status, self.id))
+
+        if note1 is not None:
+            connection.write("""
+                UPDATE status
+                SET note1=?
+                WHERE project=?
+            """, (note1, self.id))
+        if note2 is not None:
+            connection.write("""
+                UPDATE status
+                SET note2=?
+                WHERE project=?
+            """, (note2, self.id))
+
     def Initialize_pipeline(self, connection):
         """
         Runs a project through the pipeline for the first time.
         """
+       connection.write('INSERT INTO status (project, status) VALUES (?, ?);', (self.id, 'initialized'))
+
         x = os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
         if x != 0:
             raise(Exception(f'Call to git returned non-zero exit code {x}'))
         self._generate_accession_file(connection)
+        self._set_status(connection, 'accession_list_created')
 
     def RUN(self):
         """
@@ -223,13 +246,18 @@ class Project:
             self.errors.append(f'{int(self.chimeric_error*100)}% of samples had ERROR for chimeric read count.')
 
     # NOTE: THIS METHOD DELETES FILES AND STARTS PIPELINES
-    def Rerun_as_single_end(self):
+    def Rerun_as_single_end(self, connection):
         """When a paired-end dataset should be re-evaluated without the reverse reads."""
         if not self.paired:
             raise(Exception('Cannot re-run project as single-end; it wasnt paired-end to begin with.'))
 
         self._remove_previous_dada()
         self._remove_reverse_reads()
+        connection.write("""
+            UPDATE status
+            SET rerun_as_single_end=1
+            WHERE project=?
+        """, (self.id,))
 
         self.RUN()
 
@@ -293,16 +321,29 @@ class Project:
         for error in self.errors:
             print(f'  {error}')
 
-    def REACT(self):
+    def Discard(self, connection):
+        """Removes a project's files and records its status as failed"""
+        print(f'DELETING PROJECT {self.id}')
+        self._set_status(connection, 'failed', ' / '.join(self.errors))
+        shutil.rmtree(f'{self.id}')
+        return(True)
+
+    def REACT(self, connection):
         '''Acts on the results of the pipeline completion'''
         if self.discard:
-            print('Heres where we would have deleted this project')
-            return(True)
-        if self.re_run:
-            #self.Rerun_as_single_end()
-            print('Heres where we would have re-run the project as single-end')
-            return(True)
+            confirm = input(f'Delete project {self.id}? (y/n) ')
+            if confirm != 'y':
+                print('Will only delete if user responds "y". Skipping.')
+                return
+            self.Discard(connection)
 
+        if self.re_run:
+            confirm = input(f'Re-run project {self.id} as single end? (y/n) ')
+            if confirm != 'y':
+                print('Will only re-run if user responds "y". Skipping.')
+                return
+            self.Rerun_as_single_end(connection)
+            return(True)
 
     def __repr__(self):
         return f'(Project {self.id})'

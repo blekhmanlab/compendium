@@ -96,6 +96,16 @@ class Connection(object):
             )
         """)
 
+        self.write("""
+            CREATE TABLE IF NOT EXISTS status (
+                project TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                rerun_as_single_end INTEGER DEFAULT 0,
+                note1 TEXT,
+                note2 TEXT
+            )
+        """)
+
     def __del__(self):
         """Closes the database connection when the Connection object
         is destroyed."""
