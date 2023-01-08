@@ -22,8 +22,8 @@ class Project:
     ##########################
     def _generate_accession_file(self, connection):
         """
-        Fetches a list of BioProjects from the local database and generates a list
-        of samples for each project.
+        Fetches a BioProject from the local database and generates a list
+        of samples in it. Fed into the SRA Toolkit.
 
         Inputs:
             - connection: An instance of type db.connector.Connection
@@ -333,16 +333,27 @@ class Sample:
     def _check_chimera(self):
         """Calculates the proportion of chimeric reads found
         in the reads that were not lost in some other way."""
-        self.chimera_percent = 1-(self.nonchim / self.length_filter)
-        self.chimeric_warn = self.chimera_percent > config.chimera_worrisome
-        self.chimeric_error = self.chimera_percent > config.chimera_error
+        try:
+            # This will fail if there's a sample (a control, for example)
+            # that has zero reads that cleared the length filter.
+            self.chimera_percent = 1-(self.nonchim / self.length_filter)
+            self.chimeric_warn = self.chimera_percent > config.chimera_worrisome
+            self.chimeric_error = self.chimera_percent > config.chimera_error
+        except:
+            self.chimeric_error = False
+            self.chimeric_warn = False
 
     def _check_merged(self):
         """Calculates the proportion of forward reads that were merged
         with a reverse read."""
-        self.merged_percent = self.merged / self.forward
-        self.merged_warn = self.merged_percent < config.merged_worrisome
-        self.merged_error = self.merged_percent < config.merged_error
+        try:
+            # this will fail if there's a sample with zero forward reads that were kept
+            self.merged_percent = self.merged / self.forward
+            self.merged_warn = self.merged_percent < config.merged_worrisome
+            self.merged_error = self.merged_percent < config.merged_error
+        except:
+            self.merged_error = False
+            self.merged_warn = False
 
     def _check_stages(self):
         self.retained_percent = self.nonchim / self.input
