@@ -64,7 +64,6 @@ if __name__ == "__main__":
         todo = connection.read("""
             SELECT project FROM status
             WHERE status NOT IN ('done','failed')
-        )
         """)
         if todo is None:
             print('No projects to evaluate. Exiting.')
@@ -73,16 +72,28 @@ if __name__ == "__main__":
         todo = [x[0] for x in todo]
         print(todo)
 
+        done = []
         running = []
         not_done = [] # jobs that aren't done AND aren't running
         for pid in todo:
             proj = projects.parsing.Project(pid)
-            if not proj.Check_if_done():
+            if proj.Check_if_done():
+                done.append(proj)
+            else:
                 if proj.Check_if_running():
-                    running.append(pid)
+                    running.append(proj)
                 else:
-                    not_done.append(pid)
-                continue
+                    not_done.append(proj)
+        print('\n===DONE:')
+        [print(f'   {x}') for x in done]
+
+        print('\n===RUNNING:')
+        [print(f'   {x}') for x in running]
+
+        print('\n===INCOMPLETE:')
+        [print(f'   {x}') for x in not_done]
+
+        for proj in done:
             proj.Load_results_summary()
             proj.print_errors()
             connection = db.connector.Connection()
@@ -90,20 +101,18 @@ if __name__ == "__main__":
 
         if len(running) > 0:
             print("\n------------\nSome projects are still running:")
-        for pid in running:
-            confirm = input('Print next project?')
+        for proj in running:
+            confirm = input('Print next project? ')
             if confirm != 'y':
                 print('Response was not "y"; bailing.')
                 exit(0)
-            proj = projects.parsing.Project(pid)
             proj.Report_progress()
 
         if len(not_done) > 0:
             print("\n------------\nSome projects are incomplete:")
-        for pid in not_done:
-            confirm = input('Print next project?')
+        for proj in not_done:
+            confirm = input('Print next project? ')
             if confirm != 'y':
                 print('Response was not "y"; bailing.')
                 exit(0)
-            proj = projects.parsing.Project(pid)
             proj.Report_progress()

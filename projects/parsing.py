@@ -114,6 +114,7 @@ class Project:
         return(os.path.exists(f'{self.id}/running.txt'))
 
     def Report_progress(self):
+        print(self)
         if self.Check_if_done():
             print('DONE!')
             return(True)
