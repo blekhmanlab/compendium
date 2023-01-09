@@ -396,7 +396,7 @@ class Project:
                     (self.id, x[0], x[1], int(x[2]))
                     for x in entries
                 ]
-                to_write += [x for x in entries if x[2] > 0]
+                to_write += [x for x in entries if x[2] != '0']
         # example entry: ('PRJNA987', 'SRR123', 'ASV_7', 23)
         return(to_write)
 
@@ -417,22 +417,27 @@ class Project:
                 seq = file.readline()
                 if len(seq) > 1:
                     seq = seq[0:-1] # strip trailing newline
-                seqs[asv]=[seq]
+                seqs[asv]=seq
 
-        assignments = {}
+        taxa = {}
         # The get taxonomic assignments
         with open(f'{self.id}/ASVs_taxonomy.tsv', 'r') as file:
             file.readline() # skip header
             for line in file:
                 line = line.split('\t')
                 line[-1] = line[-1][:-1]
-                assignments[line[0]] = line[1:]
+                taxa[line[0]] = line[1:]
 
         # example entry: (
-        #       ('ASV_1','Bacteria','Bacteroidota','Bacteroidia','Bacteroidales','Bacteroidaceae','Bacteroides'),
+        #       ,
         #       ('PRJNA1234', 'ASV_1','CCTACGGG')
         # )
-        return([(tuple([asv]+values), (project, asv, seqs[asv])) for asv, values in assignments.items()])
+
+        # ('ASV_1','Bacteria','Bacteroidota','Bacteroidia','Bacteroidales','Bacteroidaceae','Bacteroides')
+        assignments = [tuple([asv]+values) for asv, values in taxa.items()]
+        seqs = [(self.id, asv, seqs[asv]) for asv in taxa.keys()]
+
+        return(assignments, seqs)
 
     def Save_results(self, connection):
         """
@@ -443,22 +448,38 @@ class Project:
         counts = self._load_counts()
         assignments, seqs = self._load_asv_data()
 
-        connection.write('INSERT INTO asv_counts VALUES (?,?,?,?)', counts)
-        asv_ids = connection.write("""
-            INSERT INTO asv_sequences (project, asv, seq)
-            VALUES (?,?,?)
-            RETURNING asv, asv_id
+        # save counts
+        connection.write('INSERT INTO asv_counts (project, sample, asv, count) VALUES (?,?,?,?)', counts)
+        # save sequences
+        connection.write("""
+            INSERT INTO asv_sequences(project, asv, seq)
+            VALUES(?,?,?)
         """, seqs)
-        ids = {}
+
         # figure out which ASV ID goes with which ASV we just recorded:
+        # (This would be much tidier to use a RETURNING clause in the previous
+        # query, but that doesn't work with `executemany()`)
+        asv_ids = connection.read("""
+            SELECT asv, asv_id
+            FROM asv_sequences
+            WHERE project=?
+        """, (self.id,))
+
+        ids = {}
         for asv, asv_id in asv_ids:
             ids[asv] = asv_id
         # each assignment entry has a project-level ASV id (ASV_1, ASV_2, etc), but
         # we want to swap that out for the unique ID assigned by SQLite when we saved the ASV's sequence:
-        to_write = [tuple([ids[entry[0]], 'silva_nr99_v138_train_set']+entry[1:]) for entry in assignments]
+        # (You can try to rewrite this as a one-liner list comprehension, but last time it looked horrific
+        # so now we have a friendly little loop.)
+        to_write = []
+        for entry in assignments:
+            current = (ids[entry[0]], 'silva_nr99_v138_train_set', *entry[1:])
+            to_write.append(current)
+
         asv_ids = connection.write("""
             INSERT INTO asv_assignments
-            VALUES (?,?,?,?,?,?,?,?)
+            VALUES(?,?,?,?,?,?,?,?)
         """, to_write)
 
         self._set_status(connection, 'complete')
