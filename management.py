@@ -1,3 +1,4 @@
+import projects
 
 def Determine_projects(connection):
     """

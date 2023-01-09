@@ -6,6 +6,7 @@ import shutil
 import sqlite3
 
 import config
+import results
 
 class Project:
     def __init__(self, name):
@@ -353,8 +354,71 @@ class Project:
         shutil.rmtree(f'{self.id}')
         return(True)
 
-    def Save_results(self):
-        print("This is where we would have saved the results.")
+    ########### helpers for saving results
+    def _load_counts(self):
+        """Loads a tab-delimited file in which each column
+        is a sample and each row is an ASV, with the cells
+        indicating read counts."""
+
+        to_write = []
+
+        with open(f'{self.id}/ASVs_counts.tsv', 'r') as file:
+            samples = file.readline().split('\t')[1:] # first entry is blank
+            samples[-1] = samples[-1][:-1] # strip newline
+            for line in file:
+                line = line.split('\t')
+                line[-1] = line[-1][:-1]
+                asv = [line[0]] * len(samples)
+                entries = list(zip(samples, asv, line[1:]))
+                # convert counts to ints
+                entries = [
+                    (project, x[0], x[1], int(x[2]))
+                    for x in entries
+                ]
+                to_write += [x for x in entries if x[2] > 0]
+        # example entry: ('PRJNA987', 'SRR123', 'ASV_7', 23)
+        return(to_write)
+
+    def _load_asv_data(self):
+        """Loads a tab-delimited file in which each row is
+        a numbered ASV, associated with its inferred taxonomic
+        source."""
+
+        seqs = {}
+        # Get exact sequences
+        with open(f'{self.id}/ASVs.fa', 'r') as file:
+            while file:
+                asv = file.readline()
+                if asv == '': # empty line with no newline
+                    break
+                if len(asv) > 2:
+                    asv = asv[1:-1] # strip off leading '>' and trailing newline
+                seq = file.readline()
+                if len(seq) > 1:
+                    seq = seq[0:-1] # strip trailing newline
+                seqs[asv]=[seq]
+
+        assignments = {}
+        # The get taxonomic assignments
+        with open(f'{self.id}/ASVs_taxonomy.tsv', 'r') as file:
+            file.readline() # skip header
+            for line in file:
+                line = line.split('\t')
+                line[-1] = line[-1][:-1]
+                assignments[line[0]] = line[1:]
+
+        # example entry: ('PRJNA1234', 'ASV_1', 'Bacteria', 'Bacteroidota',
+        #   'Bacteroidia', 'Bacteroidales', 'Bacteroidaceae', 'Bacteroides', 'CCTACGGG')
+        return([tuple([project, asv]+values+[seqs[asv]]) for asv, values in assignments.items()])
+
+    def Save_results(self, connection):
+        """
+        Loads the DADA2 results and saves them to the DB
+        """
+        counts = self._load_counts()
+        asvs = self._load_asv_data()
+        print(counts[0])
+        print(asvs[0])
         return
 
     def REACT(self, connection):
