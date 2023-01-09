@@ -137,8 +137,8 @@ class Connection(object):
                 database TEXT,
                 kingdom TEXT,
                 phylum TEXT,
-                class TEXT,
-                order TEXT,
+                tclass TEXT,
+                torder TEXT,
                 family TEXT,
                 genus TEXT
             )
@@ -147,6 +147,5 @@ class Connection(object):
     def __del__(self):
         """Closes the database connection when the Connection object
         is destroyed."""
-
         if self.db is not None:
             self.db.close()

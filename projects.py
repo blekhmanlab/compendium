@@ -93,7 +93,7 @@ class Project:
         self._generate_accession_file(connection)
         self._set_status(connection, 'accession_list_created')
 
-    def RUN(self):
+    def RUN(self, connection):
         """
         Starts the pipeline!!!
         """
@@ -101,6 +101,7 @@ class Project:
         x = os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log --chdir={self.id} run_snakemake.slurm')
         if x != 0:
             raise(Exception(f'Call to git returned non-zero exit code {x}'))
+        self._set_status(connection, 'running')
 
     def Check_if_done(self):
         to_check = [
@@ -284,8 +285,9 @@ class Project:
             SET rerun_as_single_end=1
             WHERE project=?
         """, (self.id,))
+        self._set_status(connection, 'to_re_run')
 
-        self.RUN()
+        self.RUN(connection)
 
     # NOTE: THIS METHOD DELETES FILES
     def _remove_reverse_reads(self):
@@ -326,7 +328,7 @@ class Project:
         ]
         for f in files:
             try:
-                os.remove(f)
+                os.remove(f'{self.id}/{f}')
             except FileNotFoundError:
                 pass # if it's gone, it's fine
             except OSError as e:
@@ -391,7 +393,7 @@ class Project:
                 entries = list(zip(samples, asv, line[1:]))
                 # convert counts to ints
                 entries = [
-                    (project, x[0], x[1], int(x[2]))
+                    (self.id, x[0], x[1], int(x[2]))
                     for x in entries
                 ]
                 to_write += [x for x in entries if x[2] > 0]
