@@ -3,6 +3,8 @@ import glob
 import os
 import shutil
 
+import sqlite3
+
 import config
 
 class Project:
@@ -31,11 +33,14 @@ class Project:
         if self.id is None or len(self.id) < 3:
             raise(Exception(f'Project ID "{self.id}" is not valid. Bailing.'))
 
-        connection.write("""
-            UPDATE samples
-            SET srr=?
-            WHERE srs=?
-        """, (tosave.get('run'), sample))
+        samples = connection.read("""
+            SELECT s.srr
+            FROM SAMPLES s
+            WHERE srr IS NOT NULL
+                AND library_source IN ('GENOMIC','METAGENOMIC')
+                AND library_strategy='AMPLICON'
+            AND project=?""", (self.id,))
+        samples = [x[0] for x in samples]
 
         if len(samples) == 0:
             raise(Exception(f'Project {self.id} has no samples in the database!'))
@@ -73,8 +78,14 @@ class Project:
         """
         Runs a project through the pipeline for the first time.
         """
-        connection.write('INSERT INTO status (project, status) VALUES (?, ?);', (self.id, 'initialized'))
-
+        try:
+            connection.write('INSERT INTO status (project, status) VALUES (?, ?);', (self.id, 'initialized'))
+        except sqlite3.IntegrityError as e:
+            print(f'Encountered error writing new project entry to database, likely because project already exists.')
+            confirm = input('Continue? (y/n) ')
+            if confirm != 'y':
+                print('Input was not "y"; bailing.')
+                exit(0)
         x = os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
         if x != 0:
             raise(Exception(f'Call to git returned non-zero exit code {x}'))
@@ -86,7 +97,7 @@ class Project:
         Starts the pipeline!!!
         """
         timestamp = int(round(datetime.now().timestamp()))
-        x = os.system(f'sbatch --job-name={self.id[5:]} -o {self.id}.{timestamp}.log --chdir={self.id} run_snakemake.slurm')
+        x = os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log --chdir={self.id} run_snakemake.slurm')
         if x != 0:
             raise(Exception(f'Call to git returned non-zero exit code {x}'))
 
@@ -99,10 +110,16 @@ class Project:
         # return True if all the required files are present, otherwise False
         return(False not in [os.path.exists(x) for x in to_check])
 
+    def Check_if_running(self):
+        return(os.path.exists(f'{self.id}/running.txt'))
+
     def Report_progress(self):
-        if self.Check_if_done:
+        if self.Check_if_done():
             print('DONE!')
             return(True)
+
+        if self.Check_if_running():
+            print('\n===============\nCURRENTLY RUNNING\n===============\n')
 
         tests = [
             ('Initialization',
@@ -335,6 +352,10 @@ class Project:
         shutil.rmtree(f'{self.id}')
         return(True)
 
+    def Save_results(self):
+        print("This is where we would have saved the results.")
+        return
+
     def REACT(self, connection):
         '''Acts on the results of the pipeline completion'''
         if self.discard:
@@ -344,13 +365,19 @@ class Project:
                 return
             self.Discard(connection)
 
-        if self.re_run:
+        elif self.re_run:
             confirm = input(f'Re-run project {self.id} as single end? (y/n) ')
             if confirm != 'y':
                 print('Will only re-run if user responds "y". Skipping.')
                 return
             self.Rerun_as_single_end(connection)
             return(True)
+        # if we make it to this point, it's good to go!
+        confirm = input(f'Save results of project {self.id} ({self.sample_count} samples)? (y/n) ')
+        if confirm != 'y':
+            print('Will only save if user responds "y". Skipping.')
+            return
+        self.Save_results(connection)
 
     def __repr__(self):
         return f'(Project {self.id})'

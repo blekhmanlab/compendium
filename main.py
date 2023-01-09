@@ -41,6 +41,8 @@ if __name__ == "__main__":
         if proj.Check_if_done(): # true if it's complete
             proj.Load_results_summary()
             proj.print_errors()
+        else:
+            proj.Report_progress()
 
     elif sys.argv[1] == 'eval':
         if len(sys.argv) < 3:
@@ -64,22 +66,41 @@ if __name__ == "__main__":
             WHERE status NOT IN ('done','failed')
         )
         """)
+        if todo is None:
+            print('No projects to evaluate. Exiting.')
+            exit(0)
+
         todo = [x[0] for x in todo]
         print(todo)
 
-        not_done = []
+        running = []
+        not_done = [] # jobs that aren't done AND aren't running
         for pid in todo:
             proj = projects.parsing.Project(pid)
             if not proj.Check_if_done():
-                not_done.append(pid)
+                if proj.Check_if_running():
+                    running.append(pid)
+                else:
+                    not_done.append(pid)
                 continue
             proj.Load_results_summary()
             proj.print_errors()
             connection = db.connector.Connection()
             proj.REACT(connection)
+
+        if len(running) > 0:
+            print("\n------------\nSome projects are still running:")
+        for pid in running:
+            confirm = input('Print next project?')
+            if confirm != 'y':
+                print('Response was not "y"; bailing.')
+                exit(0)
+            proj = projects.parsing.Project(pid)
+            proj.Report_progress()
+
         if len(not_done) > 0:
             print("\n------------\nSome projects are incomplete:")
-        for pid not_done:
+        for pid in not_done:
             confirm = input('Print next project?')
             if confirm != 'y':
                 print('Response was not "y"; bailing.')
