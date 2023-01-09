@@ -2,11 +2,11 @@ from datetime import datetime
 import glob
 import os
 import shutil
+import tarfile
 
 import sqlite3
 
 import config
-import results
 
 class Project:
     def __init__(self, name):
@@ -347,8 +347,27 @@ class Project:
         for error in self.errors:
             print(f'  {error}')
 
+    def _record_if_paired(self, connection):
+        """
+        Records whether a project has paired-end data. Note that this overwrites
+        previous values set in this column, so if a project is marked as single-end,
+        that means the final results were single-end, not that the data was. If
+        paired is true AND rerun_as_single_end is true, this means "paired-end data"
+        also.
+        """
+
+        if self.paired is not None:
+            print(f"(Recording that project was {'' if self.paired else 'not '}paired-end.)")
+            connection.write("""
+                UPDATE status
+                SET paired=?
+                WHERE project=?
+            """, (1 if self.paired else 0, self.id))
+
     def Discard(self, connection):
         """Removes a project's files and records its status as failed"""
+        self._record_if_paired(connection)
+
         print(f'DELETING PROJECT {self.id}')
         self._set_status(connection, 'failed', ' / '.join(self.errors))
         shutil.rmtree(f'{self.id}')
@@ -407,18 +426,70 @@ class Project:
                 line[-1] = line[-1][:-1]
                 assignments[line[0]] = line[1:]
 
-        # example entry: ('PRJNA1234', 'ASV_1', 'Bacteria', 'Bacteroidota',
-        #   'Bacteroidia', 'Bacteroidales', 'Bacteroidaceae', 'Bacteroides', 'CCTACGGG')
-        return([tuple([project, asv]+values+[seqs[asv]]) for asv, values in assignments.items()])
+        # example entry: (
+        #       ('ASV_1','Bacteria','Bacteroidota','Bacteroidia','Bacteroidales','Bacteroidaceae','Bacteroides'),
+        #       ('PRJNA1234', 'ASV_1','CCTACGGG')
+        # )
+        return([(tuple([asv]+values), (project, asv, seqs[asv])) for asv, values in assignments.items()])
 
     def Save_results(self, connection):
         """
         Loads the DADA2 results and saves them to the DB
         """
+        self._record_if_paired(connection)
+
         counts = self._load_counts()
-        asvs = self._load_asv_data()
-        print(counts[0])
-        print(asvs[0])
+        assignments, seqs = self._load_asv_data()
+
+        connection.write('INSERT INTO asv_counts VALUES (?,?,?,?)', counts)
+        asv_ids = connection.write("""
+            INSERT INTO asv_sequences (project, asv, seq)
+            VALUES (?,?,?)
+            RETURNING asv, asv_id
+        """, seqs)
+        ids = {}
+        # figure out which ASV ID goes with which ASV we just recorded:
+        for asv, asv_id in asv_ids:
+            ids[asv] = asv_id
+        # each assignment entry has a project-level ASV id (ASV_1, ASV_2, etc), but
+        # we want to swap that out for the unique ID assigned by SQLite when we saved the ASV's sequence:
+        to_write = [tuple([ids[entry[0]], 'silva_nr99_v138_train_set']+entry[1:]) for entry in assignments]
+        asv_ids = connection.write("""
+            INSERT INTO asv_assignments
+            VALUES (?,?,?,?,?,?,?,?)
+        """, to_write)
+
+        self._set_status(connection, 'complete')
+
+        confirm = input('Results recorded. Archive results? ')
+        if confirm != 'y':
+            print('User input was not "y"; skipping.')
+            return
+
+        if not os.path.exists('archive'):
+            os.mkdir('archive')
+
+        with tarfile.open(name=f'archive/{self.id}.tar.gz', mode='w:gz') as archive:
+            archive.add(f'{self.id}/.snakemake/log')
+            archive.add(f'{self.id}/.snakemake/slurm_logs')
+            archive.add(f'{self.id}/ASVs_taxonomy.tsv')
+            archive.add(f'{self.id}/ASVs.fa')
+            archive.add(f'{self.id}/ASVs_counts.tsv')
+            # find the log file
+            for f in os.listdir(self.id):
+                if f.endswith('.log') or f.endswith('.pdf'):
+                    archive.add(f'{self.id}/{f}')
+
+        if not os.path.exists(f'archive/{self.id}.tar.gz'):
+            raise(Exception(f'Archive of project {self.id} was not found in archive directory.'))
+        self._set_status(connection, 'archived')
+        confirm = input('Archive created. Delete files? ')
+        if confirm != 'y':
+            print('User input was not "y"; skipping.')
+            return
+        shutil.rmtree(f'{self.id}')
+        if not os.path.exists(self.id):
+            self._set_status(connection, 'done')
         return
 
     def REACT(self, connection):
@@ -429,6 +500,7 @@ class Project:
                 print('Will only delete if user responds "y". Skipping.')
                 return
             self.Discard(connection)
+            return(True)
 
         elif self.re_run:
             confirm = input(f'Re-run project {self.id} as single end? (y/n) ')
@@ -438,10 +510,11 @@ class Project:
             self.Rerun_as_single_end(connection)
             return(True)
         # if we make it to this point, it's good to go!
+        print(f'\nProject {self.id} has passed all checks!')
         confirm = input(f'Save results of project {self.id} ({self.sample_count} samples)? (y/n) ')
         if confirm != 'y':
             print('Will only save if user responds "y". Skipping.')
-            return
+            return()
         self.Save_results(connection)
 
     def __repr__(self):

@@ -30,7 +30,11 @@ class Connection(object):
         else:
             cursor.execute(query)
         self.db.commit()
+        results = []
+        for result in cursor:
+            results.append(result)
         cursor.close()
+        return(results)
 
     def read(self, query, params=None):
         """Helper function that converts results returned stored in a
@@ -101,8 +105,42 @@ class Connection(object):
                 project TEXT PRIMARY KEY,
                 status TEXT NOT NULL,
                 rerun_as_single_end INTEGER DEFAULT 0,
+                paired INTEGER,
                 note1 TEXT,
                 note2 TEXT
+            )
+        """)
+
+        # Results:
+        self.write("""
+            CREATE TABLE IF NOT EXISTS asv_counts (
+                entryid INTEGER PRIMARY KEY,
+                project TEXT NOT NULL,
+                sample TEXT NOT NULL,
+                asv TEXT NOT NULL,
+                count INTEGER NOT NULL
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS asv_sequences (
+                asv_id INTEGER PRIMARY KEY,
+                project TEXT NOT NULL,
+                asv TEXT NOT NULL,
+                seq TEXT
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS asv_assignments (
+                asv_id INTEGER PRIMARY KEY,
+                database TEXT,
+                kingdom TEXT,
+                phylum TEXT,
+                class TEXT,
+                order TEXT,
+                family TEXT,
+                genus TEXT
             )
         """)
 
