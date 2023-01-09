@@ -6,15 +6,15 @@ import pytest
 from fixtures import Dada_dir
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import projects.parsing
+import projects
 
 def test_load_summary(Dada_dir):
-    proj = projects.parsing.Project('PRRJA12345')
+    proj = projects.Project('PRRJA12345')
     proj.Load_results_summary()
     assert len(proj.samples) == 6
 
 def test_Project_remove_reverse_reads(Dada_dir):
-    proj = projects.parsing.Project('PRRJA12345')
+    proj = projects.Project('PRRJA12345')
     proj.Load_results_summary()
     # make sure we're starting with paired-end files
     assert len(os.listdir('PRRJA12345/fastq')) == 12
@@ -30,7 +30,7 @@ def test_Project_remove_reverse_reads(Dada_dir):
         assert f[-8:] == '_1.fastq'
 
 def test_Project_remove_previous_dada(Dada_dir):
-    proj = projects.parsing.Project('PRRJA12345')
+    proj = projects.Project('PRRJA12345')
     proj.Load_results_summary()
 
     files = os.listdir('PRRJA12345')
