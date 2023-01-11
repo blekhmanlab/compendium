@@ -43,7 +43,7 @@ def Print_projects_summary(done, running, not_done):
     print('\n===INCOMPLETE:')
     [print(f'   {x}') for x in not_done]
 
-def Advance_projects(done, running, not_done, connection):
+def Advance_projects(done, running, not_done, connection, auto=False):
     """
     Iterates through projects with things that need to be addressed
     and prompts the user to approve the actions. Projects that are still
@@ -54,6 +54,10 @@ def Advance_projects(done, running, not_done, connection):
         proj.Load_results_summary()
         proj.print_errors()
         proj.REACT(connection)
+
+    # If this is part of an automated process, don't bother printing progress reports:
+    if auto:
+        return()
 
     if len(running) > 0:
         print("\n------------\nSome projects are still running:")

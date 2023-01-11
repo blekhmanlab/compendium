@@ -71,13 +71,17 @@ if __name__ == "__main__":
         management.Print_projects_summary(*current)
         management.Advance_projects(*current, connection)
     elif sys.argv[1] == 'autoforward':
-        # Trigger new jobs automatically
         connection = db.connector.Connection()
-        done, running, not_done = management.Determine_projects(connection)
+        # Process the existing projects:
+        current = management.Determine_projects(connection)
+        management.Print_projects_summary(*current)
+        management.Advance_projects(*current, connection, auto=True)
+
+        # Trigger new jobs automatically
+        done, running, not_done = current # just unpacking
         to_start = config.max_projects-len(running+not_done)
         if to_start > 0:
             todo = management.Find_todo(connection, needed=to_start, max_samples=1000)
-        #with open('autoforward.log','a') as log:
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         print(f'{now}: {len(running+not_done)} projects running. Starting {len(todo)} additional projects: {todo}')
         for pid in todo:

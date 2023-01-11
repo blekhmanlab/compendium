@@ -8,6 +8,19 @@ import sqlite3
 
 import config
 
+def confirm_destruct(prompt):
+    """
+    Asks the user if a process should proceed, and exits if not.
+    """
+    if not config.confirm_destruct:
+        return(True)
+    confirm = input(f'{prompt} (y/n) ')
+    if confirm == 'y':
+        return(True)
+    else:
+        print('User input was not "y"; skipping.')
+        return(False)
+
 class Project:
     def __init__(self, name):
         """
@@ -275,6 +288,7 @@ class Project:
     # NOTE: THIS METHOD DELETES FILES AND STARTS PIPELINES
     def Rerun_as_single_end(self, connection):
         """When a paired-end dataset should be re-evaluated without the reverse reads."""
+        print(f'Re-running {self.id} as single end.')
         if not self.paired:
             raise(Exception('Cannot re-run project as single-end; it wasnt paired-end to begin with.'))
 
@@ -484,10 +498,8 @@ class Project:
 
         self._set_status(connection, 'complete')
 
-        confirm = input('Results recorded. Archive results? ')
-        if confirm != 'y':
-            print('User input was not "y"; skipping.')
-            return
+        if confirm_destruct('Results recorded. Archive results?'):
+            return()
 
         if not os.path.exists('archive'):
             os.mkdir('archive')
@@ -507,10 +519,10 @@ class Project:
         if not os.path.exists(f'archive/{self.id}.tar.gz'):
             raise(Exception(f'Archive of project {self.id} was not found in archive directory.'))
         self._set_status(connection, 'archived')
-        confirm = input('Archive created. Delete files? ')
-        if confirm != 'y':
-            print('User input was not "y"; skipping.')
-            return
+
+        if confirm_destruct('Archive created. Delete files?'):
+            return()
+
         shutil.rmtree(f'{self.id}')
         if not os.path.exists(self.id):
             self._set_status(connection, 'done')
@@ -519,26 +531,23 @@ class Project:
     def REACT(self, connection):
         '''Acts on the results of the pipeline completion'''
         if self.discard:
-            confirm = input(f'Delete project {self.id}? (y/n) ')
-            if confirm != 'y':
-                print('Will only delete if user responds "y". Skipping.')
-                return
+            if confirm_destruct(f'Delete project {self.id}?'):
+                return()
             self.Discard(connection)
             return(True)
 
         elif self.re_run:
-            confirm = input(f'Re-run project {self.id} as single end? (y/n) ')
-            if confirm != 'y':
-                print('Will only re-run if user responds "y". Skipping.')
-                return
+            if confirm_destruct(f'Re-run project {self.id} as single end?'):
+                return()
             self.Rerun_as_single_end(connection)
             return(True)
         # if we make it to this point, it's good to go!
         print(f'\nProject {self.id} has passed all checks!')
-        confirm = input(f'Save results of project {self.id} ({self.sample_count} samples)? (y/n) ')
-        if confirm != 'y':
-            print('Will only save if user responds "y". Skipping.')
+        if confirm_destruct(f'Re-run project {self.id} as single end?'):
             return()
+        if confirm_destruct(f'Save results of project {self.id} ({self.sample_count} samples)?'):
+            return()
+
         self.Save_results(connection)
 
     def __repr__(self):

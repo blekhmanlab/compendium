@@ -14,6 +14,9 @@ db_path = '/path_to_your/compendium.db'
 # How many projects should we try to have running at one time?
 max_projects = 8
 
+# Should a user's input be required to reprocess and discard projects?
+confirm_destruct = True
+
 ############### Sample-level settings ###############
 # When evaluating the proportion of reads retained through the entire pipeline,
 # what thresholds should be used for the "warning" and "error" levels?
