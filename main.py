@@ -80,8 +80,11 @@ if __name__ == "__main__":
         # Trigger new jobs automatically
         done, running, not_done = current # just unpacking
         to_start = config.max_projects-len(running+not_done)
+
+        todo = []
         if to_start > 0:
             todo = management.Find_todo(connection, needed=to_start, max_samples=1000)
+
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         print(f'{now}: {len(running+not_done)} projects running. Starting {len(todo)} additional projects: {todo}')
         for pid in todo:
