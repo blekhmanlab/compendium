@@ -73,16 +73,20 @@ def Advance_projects(done, running, not_done, connection):
             exit(0)
         proj.Report_progress()
 
-def Find_todo(connection, to_start, min_samples=50, max_samples=10000):
+def Find_todo(connection, needed=1, min_samples=50, max_samples=10000):
     """
     Reviews the database for projects that have not yet been processed and returns
     a single ID
     """
-    done = connection.read("""
+    done_list = connection.read("""
         SELECT project FROM status
     """)
-    if done is None:
+    if done_list is None:
         done = []
+    else:
+        done = [x[0] for x in done_list]
+
+    print(f'Tracking down {needed} projects')
 
     todo = connection.read("""
     SELECT project
@@ -97,7 +101,10 @@ def Find_todo(connection, to_start, min_samples=50, max_samples=10000):
     ) AS samplecounts
     WHERE samples >= ?
         AND samples <= ?
-    """, (min_samples, max_samples))
+    ORDER BY RANDOM()
+    LIMIT ?
+    """, (min_samples, max_samples, needed))
+
     if todo is None:
         print('Did not find any projects to process!')
         return([])

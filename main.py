@@ -1,6 +1,7 @@
 from datetime import datetime
 import sys # for the command-line params
 
+import config
 import db.loader
 import db.connector
 import projects
