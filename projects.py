@@ -492,7 +492,7 @@ class Project:
         if not os.path.exists('archive'):
             os.mkdir('archive')
 
-        with tarfile.open(name=f'archive/{self.id}.tar.gz', mode='w:gz') as archive:
+        with tarfile.open(name=f'{config.archive_path}/{self.id}.tar.gz', mode='w:gz') as archive:
             archive.add(f'{self.id}/.snakemake/log')
             archive.add(f'{self.id}/.snakemake/slurm_logs')
             archive.add(f'{self.id}/ASVs_taxonomy.tsv')

@@ -5,6 +5,12 @@ Key='12345'
 # Where does the pipeline code live?
 snakemake_git = 'git@github.com:blekhmanlab/snakemake-compendium.git'
 
+# Where should we store the archived data?
+archive_path = '/path/to_your/archive/'
+
+# Where is the SQLite database file?
+db_path = '/path_to_your/compendium.db'
+
 ############### Sample-level settings ###############
 # When evaluating the proportion of reads retained through the entire pipeline,
 # what thresholds should be used for the "warning" and "error" levels?

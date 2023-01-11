@@ -1,6 +1,8 @@
 import sqlite3
 import time
 
+import config
+
 class Connection(object):
     """Data type holding the data required to maintain a database
     connection and perform queries.
@@ -10,7 +12,7 @@ class Connection(object):
         """Stores db connection info in memory and initiates a
         connection to the specified db."""
         try:
-            self.db = sqlite3.connect("compendium.db")
+            self.db = sqlite3.connect(config.db_path)
         except Exception as e:
             print(f'FATAL: {e}')
             exit(1)
