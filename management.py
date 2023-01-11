@@ -72,3 +72,33 @@ def Advance_projects(done, running, not_done, connection):
             print('Response was not "y"; bailing.')
             exit(0)
         proj.Report_progress()
+
+def Find_todo(connection, to_start, min_samples=50, max_samples=10000):
+    """
+    Reviews the database for projects that have not yet been processed and returns
+    a single ID
+    """
+    done = connection.read("""
+        SELECT project FROM status
+    """)
+    if done is None:
+        done = []
+
+    todo = connection.read("""
+    SELECT project
+    FROM (
+        SELECT project, COUNT(srr) AS samples
+        FROM SAMPLES s
+        WHERE srr IS NOT NULL
+            AND library_source IN ('GENOMIC','METAGENOMIC')
+            AND library_strategy='AMPLICON'
+        GROUP BY 1
+        ORDER BY 2 DESC
+    ) AS samplecounts
+    WHERE samples >= ?
+        AND samples <= ?
+    """, (min_samples, max_samples))
+    if todo is None:
+        print('Did not find any projects to process!')
+        return([])
+    return([x[0] for x in todo if x not in done])
