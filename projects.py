@@ -498,6 +498,7 @@ class Project:
             archive.add(f'{self.id}/ASVs_taxonomy.tsv')
             archive.add(f'{self.id}/ASVs.fa')
             archive.add(f'{self.id}/ASVs_counts.tsv')
+            archive.add(f'{self.id}/workflow/Snakefile')
             # find the log file
             for f in os.listdir(self.id):
                 if f.endswith('.log') or f.endswith('.pdf'):
