@@ -136,7 +136,7 @@ class Connection(object):
         self.write("""
             CREATE TABLE IF NOT EXISTS asv_assignments (
                 asv_id INTEGER PRIMARY KEY,
-                database TEXT,
+                tdatabase TEXT,
                 kingdom TEXT,
                 phylum TEXT,
                 tclass TEXT,
