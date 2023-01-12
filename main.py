@@ -37,6 +37,11 @@ if __name__ == "__main__":
         if confirm != 'y':
             print('User input was not "y"; skipping.')
             exit(0)
+        if len(sys.argv) < 4:
+            reason = input('Provide reason for DB: ')
+        else:
+            reason = sys.argv[3]
+        proj.errors.append(reason)
         connection = db.connector.Connection()
         proj.Discard(connection)
     elif sys.argv[1] == 'again':
