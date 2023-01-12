@@ -28,6 +28,17 @@ if __name__ == "__main__":
         connection = db.connector.Connection()
         proj.Initialize_pipeline(connection)
         proj.RUN(connection)
+    elif sys.argv[1] == 'discard':
+        if len(sys.argv) < 3:
+            exit(1)
+        proj = projects.Project(sys.argv[2])
+
+        confirm = input(f'Really discard project {sys.argv[2]}? (y/n) ')
+        if confirm != 'y':
+            print('User input was not "y"; skipping.')
+            exit(0)
+        connection = db.connector.Connection()
+        proj.Discard(connection)
     elif sys.argv[1] == 'again':
         if len(sys.argv) < 3:
             exit(1)
