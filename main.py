@@ -32,7 +32,7 @@ if __name__ == "__main__":
         if len(sys.argv) < 3:
             exit(1)
         proj = projects.Project(sys.argv[2])
-        # skip initialization if it's just to restart snakemake
+        connection = db.connector.Connection()
         proj.RUN(connection)
     elif sys.argv[1] == 'status':
         if len(sys.argv) < 3:
