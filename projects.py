@@ -457,6 +457,7 @@ class Project:
         """
         Loads the DADA2 results and saves them to the DB
         """
+        print('Saving results!')
         self._record_if_paired(connection)
 
         counts = self._load_counts()
@@ -501,10 +502,7 @@ class Project:
         if confirm_destruct('Results recorded. Archive results?'):
             return()
 
-        if not os.path.exists('archive'):
-            os.mkdir('archive')
-
-        with tarfile.open(name=f'{config.archive_path}/{self.id}.tar.gz', mode='w:gz') as archive:
+        with tarfile.open(name=f'{config.archive_path}{self.id}.tar.gz', mode='w:gz') as archive:
             archive.add(f'{self.id}/.snakemake/log')
             archive.add(f'{self.id}/.snakemake/slurm_logs')
             archive.add(f'{self.id}/ASVs_taxonomy.tsv')
@@ -516,7 +514,7 @@ class Project:
                 if f.endswith('.log') or f.endswith('.pdf'):
                     archive.add(f'{self.id}/{f}')
 
-        if not os.path.exists(f'archive/{self.id}.tar.gz'):
+        if not os.path.exists(f'{config.archive_path}{self.id}.tar.gz'):
             raise(Exception(f'Archive of project {self.id} was not found in archive directory.'))
         self._set_status(connection, 'archived')
 
@@ -543,8 +541,6 @@ class Project:
             return(True)
         # if we make it to this point, it's good to go!
         print(f'\nProject {self.id} has passed all checks!')
-        if confirm_destruct(f'Re-run project {self.id} as single end?'):
-            return()
         if confirm_destruct(f'Save results of project {self.id} ({self.sample_count} samples)?'):
             return()
 
