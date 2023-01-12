@@ -10,7 +10,7 @@ import config
 
 def confirm_destruct(prompt):
     """
-    Asks the user if a process should proceed, and exits if not.
+    Asks the user if a process should proceed. TRUE indicates it's been approved.
     """
     if not config.confirm_destruct:
         return(True)
@@ -499,7 +499,7 @@ class Project:
 
         self._set_status(connection, 'complete')
 
-        if confirm_destruct('Results recorded. Archive results?'):
+        if not confirm_destruct('Results recorded. Archive results?'):
             return()
 
         with tarfile.open(name=f'{config.archive_path}{self.id}.tar.gz', mode='w:gz') as archive:
@@ -518,7 +518,7 @@ class Project:
             raise(Exception(f'Archive of project {self.id} was not found in archive directory.'))
         self._set_status(connection, 'archived')
 
-        if confirm_destruct('Archive created. Delete files?'):
+        if not confirm_destruct('Archive created. Delete files?'):
             return()
 
         shutil.rmtree(f'{self.id}')
@@ -529,21 +529,20 @@ class Project:
     def REACT(self, connection):
         '''Acts on the results of the pipeline completion'''
         if self.discard:
-            if confirm_destruct(f'Delete project {self.id}?'):
+            if not confirm_destruct(f'Delete project {self.id}?'):
                 return()
             self.Discard(connection)
             return(True)
 
         elif self.re_run:
-            if confirm_destruct(f'Re-run project {self.id} as single end?'):
+            if not confirm_destruct(f'Re-run project {self.id} as single end?'):
                 return()
             self.Rerun_as_single_end(connection)
             return(True)
         # if we make it to this point, it's good to go!
         print(f'\nProject {self.id} has passed all checks!')
-        if confirm_destruct(f'Save results of project {self.id} ({self.sample_count} samples)?'):
+        if not confirm_destruct(f'Save results of project {self.id} ({self.sample_count} samples)?'):
             return()
-
         self.Save_results(connection)
 
     def __repr__(self):
