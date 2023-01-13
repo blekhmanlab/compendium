@@ -77,6 +77,9 @@ if __name__ == "__main__":
 
         connection = db.connector.Connection()
         proj.REACT(connection)
+    elif sys.argv[1] == 'compendium':
+        connection = db.connector.Connection()
+        management.Print_compendium_summary(connection)
     elif sys.argv[1] == 'summary':
         connection = db.connector.Connection()
         current = management.Determine_projects(connection)

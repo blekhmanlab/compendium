@@ -114,3 +114,27 @@ def Find_todo(connection, needed=1, min_samples=50, max_samples=10000):
         print('Did not find any projects to process!')
         return([])
     return([x[0] for x in todo if x not in done])
+
+def Print_compendium_summary(connection):
+    """
+    Reviews the database for projects that have not yet been processed and returns
+    a single ID
+    """
+    counts = connection.read("""
+        SELECT COUNT(DISTINCT project), COUNT(DISTINCT sample)
+        FROM asv_counts
+    """)
+    if counts is None:
+        print('No projects found in asv_counts table.')
+        return()
+    print(f'Results table contains:\n{counts[0][2]} samples from\n{counts[0][1]} projects.\n')
+
+    counts = connection.read("""
+        SELECT status, COUNT(DISTINCT project)
+        FROM status
+        GROUP BY 1
+        ORDER BY 2 DESC
+    """)
+    print('PROJECT STATUS FREQUENCY:')
+    for entry in counts:
+        print(f'{entry[1]} projects: {entry[0]}')
