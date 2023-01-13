@@ -127,7 +127,7 @@ def Print_compendium_summary(connection):
     if counts is None:
         print('No projects found in asv_counts table.')
         return()
-    print(f'Results table contains:\n{counts[0][2]} samples from\n{counts[0][1]} projects.\n')
+    print(f'Results table contains:\n{counts[0][1]} samples from\n{counts[0][0]} projects.\n')
 
     counts = connection.read("""
         SELECT status, COUNT(DISTINCT project)
