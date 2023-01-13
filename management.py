@@ -42,6 +42,7 @@ def Print_projects_summary(done, running, not_done):
 
     print('\n===INCOMPLETE:')
     [print(f'   {x}') for x in not_done]
+    print('\n===\n===\n')
 
 def Advance_projects(done, running, not_done, connection, auto=False):
     """
