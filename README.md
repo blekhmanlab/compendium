@@ -1,11 +1,11 @@
 # HMC Metadata Ingest Service
 
 ## Configuration
-Create a file called `config.py` with the following variables, all of which are passed in API requests to NCBI:
+Copy the `config_template.py` file and name it `config.py`. All of the options are editable, but the following variables *must* be set for sending API requests to NCBI:
 
 * **Tool**: The name of the application that's collecting data.
 * **Email**: A contact address NCBI administrators can reach.
-* **Key**: An NCBI API key.
+* **Key**: An [NCBI API key](https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/).
 
 ## Commands
 

@@ -1,15 +1,171 @@
-from collections import defaultdict
-import os
+"""
+This module provides helper functions for interacting with a SQLite database
+and loading external data into it.
+"""
+import sqlite3
 import time
 import xml.etree.ElementTree as ET
 
 import requests
 
 import config
-from . import connector
+
+class Connection(object):
+    """Data type holding the data required to maintain a database
+    connection and perform queries.
+
+    """
+    def __init__(self):
+        """Stores db connection info in memory and initiates a
+        connection to the specified db."""
+        try:
+            self.db = sqlite3.connect(config.db_path)
+        except Exception as ex:
+            print(f'FATAL: {ex}')
+            exit(1)
+        print('Connected!')
+        self.setup_tables()
+
+    def write(self, query, params=None):
+        """
+        Executes a query against the database that
+        """
+        cursor = self.db.cursor()
+        if params is not None:
+            if isinstance(params, tuple):
+                cursor.execute(query, params)
+            elif isinstance(params, list):
+                cursor.executemany(query, params)
+            else:
+                raise Exception('Parameters must either be in a tuple (execute) or list (executemany)')
+
+        else:
+            cursor.execute(query)
+        self.db.commit()
+        results = []
+        for result in cursor:
+            results.append(result)
+        cursor.close()
+        return results
+
+    def read(self, query, params=None):
+        """Helper function that converts results returned stored in a
+        sqlite3 cursor into a less temperamental list format.
+
+        Arguments:
+            - query: The SQL query to be executed.
+            - params: Any parameters to be substituted into the query.
+                sqlite3 handles this better than Python does.
+        Returns:
+            - A list of tuples, one for each row of results.
+
+        """
+
+        results = []
+        try:
+            cursor = self.db.cursor()
+            if params is not None:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+
+            for result in cursor:
+                results.append(result)
+
+            cursor.close()
+
+            return results
+
+        except Exception as ex:
+            print(f'ERROR with db query execution: {ex}')
+
+    def setup_tables(self):
+        """
+        Makes sure all required tables are created in the specified database.
+        """
+        self.write("""
+            CREATE TABLE IF NOT EXISTS samples(
+                srs TEXT PRIMARY KEY,
+                project TEXT,
+                taxon TEXT,
+                srr TEXT,
+                library_strategy TEXT,
+                library_source TEXT,
+                pubdate TEXT,
+                total_bases INTEGER,
+                exported INTEGER DEFAULT 0
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS tags (
+                tagid INTEGER PRIMARY KEY,
+                srs TEXT,
+                tag TEXT,
+                value TEXT
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS tags (
+                tagid INTEGER PRIMARY KEY,
+                srs TEXT,
+                tag TEXT,
+                value TEXT
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS status (
+                project TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                rerun_as_single_end INTEGER DEFAULT 0,
+                paired INTEGER,
+                note1 TEXT,
+                note2 TEXT
+            )
+        """)
+
+        # Results:
+        self.write("""
+            CREATE TABLE IF NOT EXISTS asv_counts (
+                entryid INTEGER PRIMARY KEY,
+                project TEXT NOT NULL,
+                sample TEXT NOT NULL,
+                asv TEXT NOT NULL,
+                count INTEGER NOT NULL
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS asv_sequences (
+                asv_id INTEGER PRIMARY KEY,
+                project TEXT NOT NULL,
+                asv TEXT NOT NULL,
+                seq TEXT
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS asv_assignments (
+                asv_id INTEGER PRIMARY KEY,
+                tdatabase TEXT,
+                kingdom TEXT,
+                phylum TEXT,
+                tclass TEXT,
+                torder TEXT,
+                family TEXT,
+                genus TEXT
+            )
+        """)
+
+    def __del__(self):
+        """Closes the database connection when the Connection object
+        is destroyed."""
+        if self.db is not None:
+            self.db.close()
 
 def load_xml(taxon, filename, save_samples=True, save_tags=False):
-    connection = connector.Connection()
     """
     Loads the "full text XML" exported from a search of BioSamples and adds
     them to the database.
@@ -17,6 +173,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     Inputs:
         - taxon: The taxon ID from the NCBI taxonomy browser associated with the samples.
     """
+    connection = Connection()
     print(f'\n\n\n===================\nProcessing XML for taxon {taxon}\n==========\n\n')
 
     # load the XML file
@@ -33,9 +190,9 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
         # find SRA ID of sample
         # example: <BioSample> <Ids> <Id db="SRA">SRS5588834</Id> </Ids> </BioSample>
         sra = None
-        for x in sample.iter('Id'):
-            if 'db' in x.attrib.keys() and x.attrib['db'] == 'SRA':
-                sra = x.text
+        for entry in sample.iter('Id'):
+            if 'db' in entry.attrib.keys() and entry.attrib['db'] == 'SRA':
+                sra = entry.text
         if sra is None:
             continue # skip samples without an SRA sample
         #  NOTE: we used to check for BioProject ID here,
@@ -72,7 +229,7 @@ def find_runs(count, per_query=80):
         - count: int. The upper limit for how many entries to search in total.
         - per_query: int. The number of entries to request in each web request
     """
-    connection = connector.Connection()
+    connection = Connection()
 
     todo = connection.read("""
         SELECT srs FROM samples
@@ -90,27 +247,29 @@ def find_runs(count, per_query=80):
         if cursor % 1000 == 0:
             print(f'COMPLETE: {cursor}')
 
-        url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool={config.Tool}&email={config.Email}&api_key={config.Key}&db=sra&usehistory=y&term='
-        for x in range(0, per_query):
+        url = config.esearch_url
+        # Build up the URL project by project:
+        for _ in range(0, per_query):
             url += f'{todo[cursor]}[accn] or '
             cursor += 1
-            if cursor == len(todo): break # in case the total isn't a multiple of "per_query"
+            if cursor == len(todo):
+                break # in case the total isn't a multiple of "per_query"
         url = url[:-4] # trim off trailing " or "
         if len(url) >1950:
             print(url)
             print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
             exit(1)
         try:
-            r = requests.get(url)
+            req = requests.get(url, timeout=config.timeout)
         except:
             print('ERROR: Error sending request for webenv data. Skipping.')
             time.sleep(1)
             continue
 
         try:
-            tree = ET.fromstring(r.text)
+            tree = ET.fromstring(req.text)
         except:
-            print(f'ERROR: Couldnt parse response retrieving webenv data: {r.text}')
+            print(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}')
             print('Skipping.')
             time.sleep(1)
             continue
@@ -118,21 +277,21 @@ def find_runs(count, per_query=80):
         webenv = tree.find('WebEnv')
         if webenv is None:
             print('\n---------\n')
-            print(r.text)
+            print(req.text)
             print("WARNING: Got response without a 'webenv' field. Moving on.")
             print('\n---\n')
             time.sleep(1)
             continue
         time.sleep(0.5)
-        url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?tool={config.Tool}&email={config.Email}&db=sra&query_key=1&WebEnv={webenv.text}'
+        url = f'{config.efetch_url}&WebEnv={webenv.text}'
         if len(url) >1950:
             print(url)
             print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
             exit(1)
 
-        r = requests.get(url)
+        req = requests.get(url, timeout=config.timeout)
         try:
-            tree = ET.fromstring(r.text)
+            tree = ET.fromstring(req.text)
         except ET.ParseError:
             print("WARNING: Misformed response from call to eFetch. Skipping.")
             time.sleep(10)
@@ -144,7 +303,7 @@ def find_runs(count, per_query=80):
 def _record_data(data):
     """Parses a response from the efetch endpoint that has info about
     all the samples in the query."""
-    connection = connector.Connection()
+    connection = Connection()
 
     multiple_runs = 0
 
@@ -152,27 +311,27 @@ def _record_data(data):
         sample = None
         tosave = {'run': []}
 
-        for x in package.iter('SAMPLE'):
-            if 'accession' in x.attrib.keys():
-                sample = x.attrib['accession']
-        for x in package.iter('RUN'):
-            if 'accession' in x.attrib.keys():
-                tosave['run'].append(x.attrib['accession'])
-            if 'published' in x.attrib.keys():
-                tosave['pubdate'] = x.attrib['published']
-            if 'total_bases' in x.attrib.keys():
-                tosave['total_bases'] = x.attrib['total_bases']
-        for x in package.iter('EXTERNAL_ID'):
-            if 'namespace' in x.attrib.keys():
-                if x.attrib['namespace'] == 'BioProject':
-                    tosave['project'] = x.text
+        for entry in package.iter('SAMPLE'):
+            if 'accession' in entry.attrib.keys():
+                sample = entry.attrib['accession']
+        for entry in package.iter('RUN'):
+            if 'accession' in entry.attrib.keys():
+                tosave['run'].append(entry.attrib['accession'])
+            if 'published' in entry.attrib.keys():
+                tosave['pubdate'] = entry.attrib['published']
+            if 'total_bases' in entry.attrib.keys():
+                tosave['total_bases'] = entry.attrib['total_bases']
+        for entry in package.iter('EXTERNAL_ID'):
+            if 'namespace' in entry.attrib.keys():
+                if entry.attrib['namespace'] == 'BioProject':
+                    tosave['project'] = entry.text
                     break
-        for x in package.iter('LIBRARY_STRATEGY'):
-            tosave['library_strategy'] = x.text
-        for x in package.iter('LIBRARY_SOURCE'):
-            tosave['library_source'] = x.text
-        for x in package.iter('INSTRUMENT_MODEL'):
-            tosave['instrument'] = x.text
+        for entry in package.iter('LIBRARY_STRATEGY'):
+            tosave['library_strategy'] = entry.text
+        for entry in package.iter('LIBRARY_SOURCE'):
+            tosave['library_source'] = entry.text
+        for entry in package.iter('INSTRUMENT_MODEL'):
+            tosave['instrument'] = entry.text
 
         # If we found multiple runs, combine them into a single string
         if len(tosave['run']) == 0:

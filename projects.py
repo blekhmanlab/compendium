@@ -1,3 +1,7 @@
+"""
+This module defines the data structures required for tracking and
+interacting with BioProjects one at a time.
+"""
 from datetime import datetime
 import glob
 import os
@@ -13,15 +17,20 @@ def confirm_destruct(prompt):
     Asks the user if a process should proceed. TRUE indicates it's been approved.
     """
     if not config.confirm_destruct:
-        return(True)
+        return True
     confirm = input(f'{prompt} (y/n) ')
     if confirm == 'y':
-        return(True)
+        return True
     else:
         print('User input was not "y"; skipping.')
-        return(False)
+        return False
 
 class Project:
+    """
+    A Project instance represents a single BioProject and is the main unit
+    with which users will interact. Most project-level operations also influence
+    individual samples, but these are rarely done one at a time.
+    """
     def __init__(self, name):
         """
         Each Project instance stores metadata about a single BioProject and
@@ -33,6 +42,14 @@ class Project:
         self.re_run = False # should the project be re-run?
         self.errors = [] # list of issues discovered in the pipeline results
 
+        self.sample_count = None
+        self.chimeric_warn = 0
+        self.chimeric_error = 0
+        self.merged_warn = 0
+        self.merged_error = 0
+        self.retained_warn = 0
+        self.retained_error = 0
+
     ##########################
     # Methods for initializing the pipeline
     ##########################
@@ -42,10 +59,10 @@ class Project:
         of samples in it. Fed into the SRA Toolkit.
 
         Inputs:
-            - connection: An instance of type db.connector.Connection
+            - connection: An instance of type db.Connection
         """
         if self.id is None or len(self.id) < 3:
-            raise(Exception(f'Project ID "{self.id}" is not valid. Bailing.'))
+            raise Exception(f'Project ID "{self.id}" is not valid. Bailing.')
 
         samples = connection.read("""
             SELECT s.srr
@@ -57,12 +74,12 @@ class Project:
         samples = [x[0] for x in samples]
 
         if len(samples) == 0:
-            raise(Exception(f'Project {self.id} has no samples in the database!'))
+            raise Exception(f'Project {self.id} has no samples in the database!')
 
         if os.path.exists(f'{self.id}/SraAccList.txt'):
-            raise(Exception(f'Project already initialized: {self.id}'))
+            raise Exception(f'Project already initialized: {self.id}')
 
-        with open(f'{self.id}/SraAccList.txt','w') as f:
+        with open(f'{self.id}/SraAccList.txt','w', encoding='UTF-8') as f:
             for sample in samples:
                 f.write(f'{sample}\n')
         return True
@@ -88,21 +105,22 @@ class Project:
                 WHERE project=?
             """, (note2, self.id))
 
-    def Initialize_pipeline(self, connection):
+    def initialize_pipeline(self, connection):
         """
         Runs a project through the pipeline for the first time.
         """
         try:
             connection.write('INSERT INTO status (project, status) VALUES (?, ?);', (self.id, 'initialized'))
-        except sqlite3.IntegrityError as e:
-            print(f'Encountered error writing new project entry to database, likely because project already exists.')
+        except sqlite3.IntegrityError as ex:
+            print('Encountered error writing new project entry to db, likely because project already exists. Error:')
+            print(ex)
             confirm = input('Continue? (y/n) ')
             if confirm != 'y':
                 print('Input was not "y"; bailing.')
                 exit(0)
         x = os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
         if x != 0:
-            raise(Exception(f'Call to git returned non-zero exit code {x}'))
+            raise Exception(f'Call to git returned non-zero exit code {x}')
         self._generate_accession_file(connection)
         self._set_status(connection, 'accession_list_created')
 
@@ -113,10 +131,13 @@ class Project:
         timestamp = int(round(datetime.now().timestamp()))
         x = os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log --chdir={self.id} run_snakemake.slurm')
         if x != 0:
-            raise(Exception(f'Call to sbatch returned non-zero exit code {x}'))
+            raise Exception(f'Call to sbatch returned non-zero exit code {x}')
         self._set_status(connection, 'running')
 
-    def Check_if_done(self):
+    def check_if_done(self):
+        """
+        Verifies that all final results files are present.
+        """
         to_check = [
             f'{self.id}/ASVs.fa',
             f'{self.id}/ASVs_counts.tsv',
@@ -125,16 +146,20 @@ class Project:
         # return True if all the required files are present, otherwise False
         return(False not in [os.path.exists(x) for x in to_check])
 
-    def Check_if_running(self):
+    def check_if_running(self):
+        """
+        Checks for the presence of the text file that indicates the
+        snakemake pipeline is still running.
+        """
         return(os.path.exists(f'{self.id}/running.txt'))
 
     def Report_progress(self):
         print(self)
-        if self.Check_if_done():
+        if self.check_if_done():
             print('DONE!')
             return(True)
 
-        if self.Check_if_running():
+        if self.check_if_running():
             print('\n===============\nCURRENTLY RUNNING\n===============\n')
 
         tests = [
@@ -156,9 +181,9 @@ class Project:
             }),
             ('Results',
             {
-                f'Result file: ASVs.fa': os.path.exists(f'{self.id}/ASVs.fa'),
-                f'Result file: ASVs_counts.tsv': os.path.exists(f'{self.id}/ASVs_counts.tsv'),
-                f'Result file: ASVs_taxonomy.tsv': os.path.exists(f'{self.id}/ASVs_taxonomy.tsv'),
+                'Result file: ASVs.fa': os.path.exists(f'{self.id}/ASVs.fa'),
+                'Result file: ASVs_counts.tsv': os.path.exists(f'{self.id}/ASVs_counts.tsv'),
+                'Result file: ASVs_taxonomy.tsv': os.path.exists(f'{self.id}/ASVs_taxonomy.tsv'),
             })
         ]
 
@@ -186,7 +211,7 @@ class Project:
         - Sets the self.discard and self.re_run flags
         """
 
-        with open(f'{self.id}/summary.tsv', 'r') as file:
+        with open(f'{self.id}/summary.tsv', 'r', encoding='UTF-8') as file:
             headers = file.readline().split('\t')[1:] # first entry is blank
             headers[-1] = headers[-1][:-1] # strip newline
             headers = ['srr'] + headers
