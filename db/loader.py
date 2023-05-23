@@ -245,6 +245,8 @@ def write_lists(min_samples=10, max_samples=100000):
     Inputs:
         - min_samples: int. The minimum number of samples that a project needs to
             have to get a list generated.
+        - max_samples: int. The maximum number of samples that a project needs to
+            have to get a list generated. Optional.
     """
     connection = connector.Connection()
 

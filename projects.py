@@ -113,7 +113,7 @@ class Project:
         timestamp = int(round(datetime.now().timestamp()))
         x = os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log --chdir={self.id} run_snakemake.slurm')
         if x != 0:
-            raise(Exception(f'Call to git returned non-zero exit code {x}'))
+            raise(Exception(f'Call to sbatch returned non-zero exit code {x}'))
         self._set_status(connection, 'running')
 
     def Check_if_done(self):
