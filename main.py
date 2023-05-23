@@ -1,3 +1,9 @@
+"""
+This module assists in the generation and maintenance of a
+database containing microbial ecology data from human microbiome
+samples.
+"""
+
 from datetime import datetime
 import sys # for the command-line params
 
@@ -10,18 +16,14 @@ import management
 if __name__ == "__main__":
     # only command-line param is how many to do in this session
     if sys.argv[1] == 'runs':
-        todo = 2000 if len(sys.argv) < 3 else sys.argv[2]
-        db.loader.find_runs(todo, per_query=80)
+        TODO = 2000 if len(sys.argv) < 3 else sys.argv[2]
+        db.loader.find_runs(TODO, per_query=80)
     elif sys.argv[1] == 'xml':
         if len(sys.argv) < 4:
-            print('The "xml" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file to be parsed.')
+            print('The "xml" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
             exit(1)
         db.loader.load_xml(sys.argv[2], sys.argv[3],
             save_samples=False, save_tags=True)
-    elif sys.argv[1] == 'lists':
-        minsamples = 50 if len(sys.argv) < 3 else int(sys.argv[2])
-        maxsamples = 50000 if len(sys.argv) < 4 else int(sys.argv[3])
-        db.loader.write_lists(minsamples, maxsamples)
     elif sys.argv[1] == 'runit':
         if len(sys.argv) < 3:
             exit(1)
@@ -39,10 +41,10 @@ if __name__ == "__main__":
             print('User input was not "y"; skipping.')
             exit(0)
         if len(sys.argv) < 4:
-            reason = input('Provide reason for DB: ')
+            REASON = input('Provide reason for DB: ')
         else:
-            reason = sys.argv[3]
-        proj.errors.append(reason)
+            REASON = sys.argv[3]
+        proj.errors.append(REASON)
         connection = db.connector.Connection()
         proj.Discard(connection)
     elif sys.argv[1] == 'again':
@@ -54,9 +56,9 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'status':
         if len(sys.argv) < 3:
             exit(1)
-        pid = sys.argv[2]
+        PID = sys.argv[2]
 
-        proj = projects.Project(pid)
+        proj = projects.Project(PID)
         if proj.Check_if_done(): # true if it's complete
             proj.Load_results_summary()
             proj.print_errors()
@@ -66,9 +68,9 @@ if __name__ == "__main__":
     elif sys.argv[1] == 'eval':
         if len(sys.argv) < 3:
             exit(1)
-        pid = sys.argv[2]
+        PID = sys.argv[2]
 
-        proj = projects.Project(pid)
+        proj = projects.Project(PID)
         if not proj.Check_if_done(): # true if it's complete
             proj.Report_progress()
             exit(0)
