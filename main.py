@@ -13,6 +13,9 @@ import projects
 import management
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print('No command given. Exiting.')
+        exit(0)
     # only command-line param is how many to do in this session
     if sys.argv[1] == 'runs':
         TODO = 2000 if len(sys.argv) < 3 else sys.argv[2]
@@ -22,9 +25,16 @@ if __name__ == "__main__":
             print('The "xml" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
             exit(1)
         db.load_xml(sys.argv[2], sys.argv[3],
+            save_samples=True, save_tags=False)
+    elif sys.argv[1] == 'tags':
+        if len(sys.argv) < 4:
+            print('The "tags" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
+            exit(1)
+        db.load_xml(sys.argv[2], sys.argv[3],
             save_samples=False, save_tags=True)
     elif sys.argv[1] == 'runit':
         if len(sys.argv) < 3:
+            print('ERROR: No project ID specified.')
             exit(1)
         proj = projects.Project(sys.argv[2])
         connection = db.Connection()
@@ -32,6 +42,7 @@ if __name__ == "__main__":
         proj.RUN(connection)
     elif sys.argv[1] == 'discard':
         if len(sys.argv) < 3:
+            print('ERROR: No project ID specified.')
             exit(1)
         proj = projects.Project(sys.argv[2])
 
@@ -48,12 +59,14 @@ if __name__ == "__main__":
         proj.Discard(connection)
     elif sys.argv[1] == 'again':
         if len(sys.argv) < 3:
+            print('ERROR: No project ID specified.')
             exit(1)
         proj = projects.Project(sys.argv[2])
         connection = db.Connection()
         proj.RUN(connection)
     elif sys.argv[1] == 'status':
         if len(sys.argv) < 3:
+            print('ERROR: No project ID specified.')
             exit(1)
         PID = sys.argv[2]
 
@@ -66,6 +79,7 @@ if __name__ == "__main__":
 
     elif sys.argv[1] == 'eval':
         if len(sys.argv) < 3:
+            print('ERROR: No project ID specified.')
             exit(1)
         PID = sys.argv[2]
 

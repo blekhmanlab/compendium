@@ -28,7 +28,10 @@ The manager application is invoked by running `python main.py` with command-line
 ### Data ingest commands
 (Likely only run once or twice for each export of data from NCBI.)
 
-* **`xml`**: Loads data exported from the BioProject portal (see "Downloading metadata from NCBI" below for details). Data is pulled from this file and  Two required parameters:
+* **`xml`**: Loads basic sample data exported from the BioProject portal (see "Downloading metadata from NCBI" below for details) and records it in the database. Two required parameters:
+  * **taxon** – the NCBI taxon ID used in the search (e.g. txid408170)
+  * **filename** - the path to the XML file to be parsed.
+* **`tags`**: Similar to the `xml` command and deals with the same input file, but this records all of the tags attached to each sample, rather than their basic metadata. This will likely take much longer. Two required parameters:
   * **taxon** – the NCBI taxon ID used in the search (e.g. txid408170)
   * **filename** - the path to the XML file to be parsed.
 * **`runs`**: Queries the compendium database for samples that have an SRS (sample) number, but not an SRR (run) number. This list is then sent to the NCBI eUtils API to retrieve the runs. The only parameter is a limit on how many samples to evaluate (default 2000).
