@@ -183,6 +183,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     print('processing samples!')
     # iterate through each entry in the file
     done = -1
+    skipped = 0
     for sample in biosamples:
         done += 1
         if done % 10000 == 0:
@@ -194,6 +195,9 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
             if 'db' in entry.attrib.keys() and entry.attrib['db'] == 'SRA':
                 sra = entry.text
         if sra is None:
+            skipped += 1
+            if skipped % 100 == 0:
+                print(f'Skipped {skipped} samples so far.')
             continue # skip samples without an SRA sample
         #  NOTE: we used to check for BioProject ID here,
         #  but for some reason half the samples don't list a bioproject
