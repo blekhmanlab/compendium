@@ -129,6 +129,16 @@ def print_compendium_summary(connection):
     Reviews the database for projects that have not yet been processed and returns
     a single ID
     """
+
+    counts = connection.read("""
+        SELECT COUNT(DISTINCT project), COUNT(DISTINCT sample) FROM samples
+    """)
+    if counts is None:
+        print('No samples found in samples table.')
+        return()
+    print(f'Samples table contains:\n{counts[0][1]} samples from\n{counts[0][0]} projects.\n')
+
+
     counts = connection.read("""
         SELECT COUNT(DISTINCT project), COUNT(DISTINCT sample)
         FROM asv_counts
