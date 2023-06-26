@@ -91,6 +91,7 @@ class Connection(object):
                 srr TEXT,
                 library_strategy TEXT,
                 library_source TEXT,
+                instrument TEXT,
                 pubdate TEXT,
                 total_bases INTEGER,
                 exported INTEGER DEFAULT 0
@@ -356,47 +357,35 @@ def _record_data(data):
         if tosave.get('run') is None:
             continue
 
-        connection.write("""
+        towrite = """
             UPDATE samples
-            SET srr=?
-            WHERE srs=?
-        """, (tosave.get('run'), sample))
-
+            SET srr=?, """
+        toparam = [tosave.get('run')]
 
         if tosave.get('project') is not None:
-            connection.write("""
-                UPDATE samples
-                SET project=?
-                WHERE srs=?
-            """, (tosave.get('project'), sample))
+            towrite += 'project=?, '
+            toparam.append(tosave.get('project'))
         if tosave.get('library_strategy') is not None:
-            connection.write("""
-                UPDATE samples
-                SET library_strategy=?
-                WHERE srs=?
-            """, (tosave.get('library_strategy'), sample))
+            towrite += 'library_strategy=?, '
+            toparam.append(tosave.get('library_strategy'))
         if tosave.get('library_source') is not None:
-            connection.write("""
-                UPDATE samples
-                SET library_source=?
-                WHERE srs=?
-            """, (tosave.get('library_source'), sample))
+            towrite += 'library_source=?, '
+            toparam.append(tosave.get('library_source'))
         if tosave.get('pubdate') is not None:
-            connection.write("""
-                UPDATE samples
-                SET pubdate=?
-                WHERE srs=?
-            """, (tosave.get('pubdate'), sample))
+            towrite += 'pubdate=?, '
+            toparam.append(tosave.get('pubdate'))
         if tosave.get('total_bases') is not None:
-            connection.write("""
-                UPDATE samples
-                SET total_bases=?
-                WHERE srs=?
-            """, (tosave.get('total_bases'), sample))
+            towrite += 'total_bases=?, '
+            toparam.append(tosave.get('total_bases'))
         if tosave.get('instrument') is not None:
-            connection.write("""
-                UPDATE samples
-                SET instrument=?
-                WHERE srs=?
-            """, (tosave.get('instrument'), sample))
+            towrite += 'instrument=?, '
+            toparam.append(tosave.get('instrument'))
+
+        towrite = towrite[:-2] # chop off final comma and space
+        towrite += """
+            WHERE srs=?"""
+        toparam.append(sample)
+        toparam = tuple(toparam)
+
+        connection.write(towrite, toparam)
     return multiple_runs
