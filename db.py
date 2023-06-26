@@ -238,6 +238,7 @@ def find_runs(count, per_query=80):
     todo = connection.read("""
         SELECT srs FROM samples
         WHERE srr IS NULL
+        ORDER BY RANDOM()
         LIMIT ?""", (count,)
     )
 
