@@ -20,8 +20,8 @@ class Connection(object):
         connection to the specified db."""
         try:
             self.db = sqlite3.connect(config.db_path)
-        except Exception as ex:
-            print(f'FATAL: {ex}')
+        except sqlite3.Error as ex:
+            print(f'FATAL: {ex.sqlite_errorname}')
             exit(1)
         print('Connected!')
         self.setup_tables()
@@ -76,8 +76,8 @@ class Connection(object):
 
             return results
 
-        except Exception as ex:
-            print(f'ERROR with db query execution: {ex}')
+        except sqlite3.Error as ex:
+            print(f'ERROR with db query execution: {ex.sqlite_errorname}')
 
     def setup_tables(self):
         """
@@ -196,7 +196,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
                 sra = entry.text
         if sra is None:
             skipped += 1
-            if skipped % 100 == 0:
+            if skipped % 1000 == 0:
                 print(f'Skipped {skipped} samples so far.')
             continue # skip samples without an SRA sample
         #  NOTE: we used to check for BioProject ID here,
@@ -221,7 +221,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
             params = [(sra, tag, value) for (tag, value) in all_tags.items()]
             connection.write(sql, params)
 
-    print(f'{len(biosamples)} total samples')
+    print(f'{len(biosamples)} total samples evaluated, {skipped} skipped')
 
 def find_runs(count, per_query=80):
     """
@@ -265,14 +265,14 @@ def find_runs(count, per_query=80):
             exit(1)
         try:
             req = requests.get(url, timeout=config.timeout)
-        except:
+        except requests.exceptions.HTTPError:
             print('ERROR: Error sending request for webenv data. Skipping.')
             time.sleep(1)
             continue
 
         try:
             tree = ET.fromstring(req.text)
-        except:
+        except ET.ParseError:
             print(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}')
             print('Skipping.')
             time.sleep(1)
