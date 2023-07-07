@@ -24,7 +24,7 @@ class Connection(object):
         except sqlite3.Error as ex:
             print(f'FATAL: {ex.sqlite_errorname}')
             exit(1)
-        print('Connected!')
+        #print('Connected!')
         self.setup_tables()
 
     def write(self, query, params=None):
@@ -78,7 +78,8 @@ class Connection(object):
             return results
 
         except sqlite3.Error as ex:
-            print(f'ERROR with db query execution: {ex.sqlite_errorname}')
+            print(f'ERROR with db query execution: {ex}')
+            raise
 
     def setup_tables(self):
         """
@@ -95,7 +96,22 @@ class Connection(object):
                 instrument TEXT,
                 pubdate TEXT,
                 total_bases INTEGER,
-                exported INTEGER DEFAULT 0
+                geo_loc_name TEXT
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS geo_loc_countries (
+                geo_loc_name TEXT PRIMARY KEY,
+                iso2 TEXT NOT NULL
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS countries (
+                iso2 TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                region TEXT NOT NULL
             )
         """)
 
@@ -132,7 +148,6 @@ class Connection(object):
         self.write("""
             CREATE TABLE IF NOT EXISTS asv_counts (
                 entryid INTEGER PRIMARY KEY,
-                project TEXT NOT NULL,
                 sample TEXT NOT NULL,
                 asv TEXT NOT NULL,
                 count INTEGER NOT NULL
@@ -257,8 +272,6 @@ def find_runs(count, per_query=80):
     cursor = 0
     multiple_runs = 0
     while cursor < len(todo):
-        if cursor > 0 and cursor % (per_query * 100) == 0:
-            time.sleep(10) # pause for a bit every 100 requests
         if cursor % 1000 == 0:
             print(f'COMPLETE: {cursor}')
 
@@ -274,11 +287,12 @@ def find_runs(count, per_query=80):
             print(url)
             print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
             exit(1)
+        print('Next request')
+        time.sleep(0.5)
         try:
             req = requests.get(url, timeout=config.timeout)
         except requests.exceptions.HTTPError:
             print('ERROR: Error sending request for webenv data. Skipping.')
-            time.sleep(1)
             continue
 
         try:
@@ -286,18 +300,14 @@ def find_runs(count, per_query=80):
         except ET.ParseError:
             print(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}')
             print('Skipping.')
-            time.sleep(1)
             continue
 
         webenv = tree.find('WebEnv')
         if webenv is None:
             print('\n---------\n')
             print(req.text)
-            print("WARNING: Got response without a 'webenv' field. Moving on.")
-            print('\n---\n')
-            time.sleep(1)
+            print("WARNING: Got response without a 'webenv' field. Skipping.")
             continue
-        time.sleep(0.5)
         url = f'{config.efetch_url}&WebEnv={webenv.text}'
         if len(url) >1950:
             print(url)
@@ -309,7 +319,6 @@ def find_runs(count, per_query=80):
             tree = ET.fromstring(req.text)
         except ET.ParseError:
             print("WARNING: Misformed response from call to eFetch. Skipping.")
-            time.sleep(10)
             continue
         multiple_runs += _record_data(tree)
 

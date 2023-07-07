@@ -489,7 +489,7 @@ class Project:
         assignments, seqs = self._load_asv_data()
 
         # save counts
-        connection.write('INSERT INTO asv_counts (project, sample, asv, count) VALUES (?,?,?,?)', counts)
+        connection.write('INSERT INTO asv_counts (sample, asv, count) VALUES (?,?,?)', counts)
         # save sequences
         connection.write("""
             INSERT INTO asv_sequences(project, asv, seq)
