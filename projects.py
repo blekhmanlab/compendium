@@ -432,11 +432,11 @@ class Project:
                 entries = list(zip(samples, asv, line[1:]))
                 # convert counts to ints
                 entries = [
-                    (self.id, x[0], x[1], int(x[2]))
+                    (x[0], x[1], int(x[2]))
                     for x in entries
                 ]
-                to_write += [x for x in entries if x[2] != '0']
-        # example entry: ('PRJNA987', 'SRR123', 'ASV_7', 23)
+                to_write += [x for x in entries if x[2] != 0]
+        # example entry: ('SRR123', 'ASV_7', 23)
         return(to_write)
 
     def _load_asv_data(self):
