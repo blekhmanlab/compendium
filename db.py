@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 import requests
 
 import config
+import amplicon
 
 class Connection(object):
     """Data type holding the data required to maintain a database
@@ -157,6 +158,14 @@ class Connection(object):
                 torder TEXT,
                 family TEXT,
                 genus TEXT
+            )
+        """)
+
+        self.write("""
+            CREATE TABLE IF NOT EXISTS asv_inference (
+                project TEXT PRIMARY KEY,
+                region TEXT,
+                length REAL
             )
         """)
 
@@ -389,3 +398,48 @@ def _record_data(data):
 
         connection.write(towrite, toparam)
     return multiple_runs
+
+def find_asv_data(count=25):
+    """
+    Runs a heuristic process for inferring which hypervariable regions were
+    targeted in an amplicon sequencing project
+
+    Inputs:
+        - count: int. The upper limit for how many projects to evaluate in total.
+    """
+    connection = Connection()
+
+    todo = connection.read("""
+        SELECT DISTINCT seq.project
+        FROM asv_sequences seq
+        LEFT JOIN asv_inference ai
+            ON seq.project=ai.project
+        WHERE ai.region IS NULL OR ai.length IS NULL
+        ORDER BY RANDOM()
+        LIMIT ?""", (count,)
+    )
+
+    todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
+    print(f'Found {len(todo)} projects to evaluate')
+    cursor = 0
+    while cursor < len(todo):
+        if cursor % 50 == 0:
+            print(f'COMPLETE: {cursor}')
+
+        proj = todo[cursor]
+
+        data = connection.read("""
+            SELECT seq
+            FROM asv_sequences
+            WHERE project=?
+        """, (proj,))
+
+        asvs = [x[0] for x in data]
+        print(f'{proj}: Found {len(asvs)} ASVs to classify.')
+        results = amplicon.process_project(asvs)
+        print(f'  {results[0]}, {results[1]}')
+        connection.write(
+            'INSERT INTO asv_inference (project, region, length) VALUES (?,?,?)',
+            (proj, results[0], results[1])
+        )
+        cursor += 1

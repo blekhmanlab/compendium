@@ -20,6 +20,8 @@ if __name__ == "__main__":
     if sys.argv[1] == 'runs':
         TODO = 2000 if len(sys.argv) < 3 else sys.argv[2]
         db.find_runs(TODO, per_query=80)
+    elif sys.argv[1] == 'asvs':
+        db.find_asv_data(100)
     elif sys.argv[1] == 'xml':
         if len(sys.argv) < 4:
             print('The "xml" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
