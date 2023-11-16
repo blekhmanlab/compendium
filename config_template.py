@@ -1,3 +1,7 @@
+"""
+This "module" provides a template for the "config.py" that a user should
+create to specify the parameters needed for the tool to run.
+"""
 # What identifiers should we send with API requests sent to NCBI?
 Tool='compendium'
 Email='email_goes_here'

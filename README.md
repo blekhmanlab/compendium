@@ -1,5 +1,14 @@
 # HMC Metadata Ingest Service
 
+## Installation
+```sh
+git clone git@github.com:blekhmanlab/compendium-manager.git
+cd compendium-manager
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
 ## Configuration
 Copy the `config_template.py` file and name it `config.py`. All of the options are editable, but the following variables *must* be set for sending API requests to NCBI:
 
