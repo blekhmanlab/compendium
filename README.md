@@ -1,24 +1,44 @@
 # HMC Metadata Ingest Service
 
+This is the command-line utility being developed for use with the Human Microbiome Compendium, but it may be useful to others looking to deal with bulk genomic data from NCBI. It ingests metadata about BioSamples, pulls together enough information to download the deposited FASTQ files from the Sequence Read Archive, and deploys individual Snakemake pipelines to process each project separately.
+
+**This software has not yet had a public 1.0 release,**  nor has it been tested on anything other than our very specific use case—please keep this in mind when using this tool or submitting feedback.
+
+## Structure
+
+This "ingest service" is designed primarily to launch Snakemake pipelines, monitor their progress, and collect their results upon completion. However, there are multiple steps that happen before and after the pipelines are deployed. Broadly, these are the steps that make up the complete workflow:
+
+1. Search results are exported from the BioSample web portal (see below) into an XML file. This file forms the core of the data used by the ingest service, which parses the XML, extracts the relevant data and saves it to a local SQLite database.
+1. 
+
 ## Installation
+
+This application requires Python 3 and has been tested with Python 3.9.6. The CLI should work as expected on MacOS and Linux, but the Snakemake pipelines it invokes for processing the raw data will likely only work on Linux. Please see [the associated pipeline repository](https://github.com/blekhmanlab/snakemake-compendium) for details.
+
+From the command-line of your choice, run these commands:
+
 ```sh
 git clone git@github.com:blekhmanlab/compendium-manager.git
 cd compendium-manager
+###### (optional: establish a virtual environment)
 python -m venv venv
 source venv/bin/activate
+######
 pip install -r requirements.txt
 ```
 
 ## Configuration
-Copy the `config_template.py` file and name it `config.py`. All of the options are editable, but the following variables *must* be set for sending API requests to NCBI:
+Copy the `config_template.py` file and name it `config.py`. All of the options are editable, but the following variables *must* be set so they can be appended to API requests sent to NCBI:
 
 * **Tool**: The name of the application that's collecting data.
 * **Email**: A contact address NCBI administrators can reach.
-* **Key**: An [NCBI API key](https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/).
+* **Key**: An [NCBI API key](https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/), available for free.
+
+There are many other options that can be tweaked in the config file; comments around each value explain their use.
 
 ## Commands
 
-The manager application is invoked by running `python main.py` with command-line parameters indicating which operation to perform (e.g. `python main.py runs 2000`).
+For now, the manager application is invoked by running `python main.py` with command-line parameters indicating which operation to perform (e.g. `python main.py runs 2000`).
 
 ### Compendium-level commands
 * **`compendium`**: Retrieves a summary of progress in processing projects for the compendium and prints a report.

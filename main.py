@@ -35,6 +35,7 @@ if __name__ == "__main__":
         db.load_xml(sys.argv[2], sys.argv[3],
             save_samples=False, save_tags=True)
     elif sys.argv[1] == 'runit':
+        # process a single project
         if len(sys.argv) < 3:
             print('ERROR: No project ID specified.')
             exit(1)
@@ -43,6 +44,7 @@ if __name__ == "__main__":
         proj.initialize_pipeline(connection)
         proj.RUN(connection)
     elif sys.argv[1] == 'discard':
+        # remove a project
         if len(sys.argv) < 3:
             print('ERROR: No project ID specified.')
             exit(1)
@@ -60,6 +62,7 @@ if __name__ == "__main__":
         connection = db.Connection()
         proj.Discard(connection)
     elif sys.argv[1] == 'again':
+        # retry a project
         if len(sys.argv) < 3:
             print('ERROR: No project ID specified.')
             exit(1)
@@ -67,6 +70,7 @@ if __name__ == "__main__":
         connection = db.Connection()
         proj.RUN(connection)
     elif sys.argv[1] == 'status':
+        # check project status
         if len(sys.argv) < 3:
             print('ERROR: No project ID specified.')
             exit(1)
@@ -88,10 +92,9 @@ if __name__ == "__main__":
         proj = projects.Project(PID)
         if not proj.check_if_done(): # true if it's complete
             proj.Report_progress()
-            exit(0)
-
         proj.Load_results_summary()
         proj.print_errors()
+        exit(0)
 
         connection = db.Connection()
         proj.REACT(connection)
