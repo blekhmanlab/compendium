@@ -9,7 +9,12 @@ This is the command-line utility being developed for use with the Human Microbio
 This "ingest service" is designed primarily to launch Snakemake pipelines, monitor their progress, and collect their results upon completion. However, there are multiple steps that happen before and after the pipelines are deployed. Broadly, these are the steps that make up the complete workflow:
 
 1. Search results are exported from the BioSample web portal (see below) into an XML file. This file forms the core of the data used by the ingest service, which parses the XML, extracts the relevant data and saves it to a local SQLite database.
-1. 
+1. The application uses the NCBI "E-utilities" to retrieve enough information about each BioSample to associate each one with entries in the Sequence Read Archive. (This can take a long time for large collections of samples.)
+1. The application reviews the list of projects and locates one that has not yet been processed. A copy of the Snakemake pipeline is created for this project.
+1. The application submits a batch job to the HPC scheduler that launches Snakemake. This job is Snakemake's "supervisor" process—it runs for the duration of the pipeline, and Snakemake uses it to monitor progress through the pipeline. Snakemake submits its own batch jobs for each sample in each step of the pipeline. **The application itself now exits.**
+1. The final step of the Snakemake pipeline, if it completes successfully, is to **submit a new batch job** that runs the application's "forward" command. This command prompts the application to check the status of all currently running projects and update its records.
+1. If the application observes any projects that have completed since it last checked, the application loads summary information about the results and validates that the project's results are acceptable—whether the proportion of chimeric reads is too high, for example, or whether a suspiciously low proportion of forward reads were matched to reverse reads. If paired reads cannot be reliably merged, reverse reads are discarded and the project is reprocessed as a single-end dataset.
+1. If the project passes all quality control checks, the results are parsed out of the pipeline's text file output and loaded into the local database.
 
 ## Installation
 
