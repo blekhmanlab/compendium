@@ -1,4 +1,26 @@
-# HMC Metadata Ingest Service
+![Human Microbiome Compendium logo](http://blekhmanlab.org/images/compendium.png "Human Microbiome Compendium")
+
+Welcome to the central repository for the Human Microbiome Compendium, an ongoing project to process and integrate hundreds of thousands of human microbiome samples using publicly available data from the members of the [International Nucleotide Sequence Database Collaboration](https://www.insdc.org/). In short, we retrieve sequencing data from the **BioProject and Sequence Read Archive** databases, process it with a uniform pipeline, and combine it into **one large dataset** that can be used as a training set for machine-learning models, a conventional dataset for microbiome analysis, or as additional context for samples of your own.
+
+**If you have feedback, questions or issues with the HMC dataset or code, you're in the right place:**
+
+* For bug fixes, feature requests and suggestions, please [submit a new Issue](https://github.com/blekhmanlab/compendium/issues).
+* For troubleshooting help or questions about a particular use case, please [submit a new Discussion topic](https://github.com/blekhmanlab/compendium/discussions).
+* For privacy or security concerns, please see our [security policy](/SECURITY.md).
+
+Information about the project is spread across several locations:
+
+* Our website at **[microbiomap.org](https://microbiomap.org)** provides information about the project and the most up-to-date links for announcements, releases and publications.
+    * The [`compendium_website`](https://github.com/blekhmanlab/compendium_website) repository contains the code for microbiomap.org.
+* This repository contains the code for the compendium management software developed to automate steps for processing and quality control.
+* The [`snakemake-compendium`](https://github.com/blekhmanlab/snakemake-compendium) repository contains the pipeline code used to process samples. Compendium Manager launches individual instances of this pipeline for each BioProject.
+* The [`MicroBioMap`](https://github.com/seandavi/MicroBioMap) repository contains the code for the R package developed to streamline the retrieval and loading of compendium data.
+
+Please note, the application and pipeline code in these repositories represents the most up-to-date processes in use by the compendium for what will be the 2.0 release. Code used for processing all 1.x releases of the compendium is [archived on Zenodo](https://doi.org/10.5281/zenodo.13733482).
+
+---
+
+# HMC Compendium Manager
 
 This is the command-line utility being developed for use with the Human Microbiome Compendium, but it may be useful to others looking to deal with bulk genomic data from NCBI. It ingests metadata about BioSamples, pulls together enough information to download the deposited FASTQ files from the Sequence Read Archive, and deploys individual Snakemake pipelines to process each project separately.
 
