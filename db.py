@@ -209,6 +209,16 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     # iterate through each entry in the file
     done = -1
     skipped = 0
+
+    
+    # make a list of samples we've already recorded, so an XML file can be parsed in
+    # stages if necessary
+    recognized_samples = connection.read('SELECT srs FROM samples ORDER BY 1')
+    recognized_samples = [x[0] for x in recognized_samples] #unpack tuples of length 1
+
+    recognized_tags = connection.read('SELECT DISTINCT srs FROM tags ORDER BY 1')
+    recognized_tags = [x[0] for x in recognized_tags]
+
     for sample in biosamples:
         done += 1
         if done % 10000 == 0:
@@ -224,18 +234,20 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
             if skipped % 1000 == 0:
                 print(f'Skipped {skipped} samples so far.')
             continue # skip samples without an SRA sample
+
         #  NOTE: we used to check for BioProject ID here,
         #  but for some reason half the samples don't list a bioproject
         #  even if they have one.
 
-        if save_samples:
-            # write sample into table
+        if save_samples and sra not in recognized_samples:
             connection.write('INSERT INTO samples (srs, taxon) VALUES (?, ?);', (sra, taxon))
 
-        if save_tags:
+        if save_tags and sra not in recognized_tags:
             # go through all the attributes and tally them
             all_tags = {}
             for tag in sample.iter('Attribute'):
+                if tag is None or tag.text is None: # some tags don't have values
+                    continue
                 text = tag.text.lower()
                 if 'harmonized_name' in tag.attrib.keys():
                     all_tags[tag.attrib['harmonized_name']] = text
@@ -247,6 +259,8 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
             connection.write(sql, params)
 
     print(f'{len(biosamples)} total samples evaluated, {skipped} skipped')
+    # TODO: check if we recorded tags for samples that we skipped
+    
 
 def find_runs(count, per_query=80):
     """
