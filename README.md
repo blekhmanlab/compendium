@@ -45,8 +45,8 @@ This application requires Python 3 and has been tested with Python 3.9.6. The CL
 From the command-line of your choice, run these commands:
 
 ```sh
-git clone git@github.com:blekhmanlab/compendium-manager.git
-cd compendium-manager
+git clone git@github.com:blekhmanlab/compendium.git
+cd compendium
 ###### (optional: establish a virtual environment)
 python -m venv venv
 source venv/bin/activate
@@ -61,7 +61,7 @@ Copy the `config_template.py` file and name it `config.py`. All of the options a
 * **Email**: A contact address NCBI administrators can reach.
 * **Key**: An [NCBI API key](https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/), available for free.
 
-There are many other options that can be tweaked in the config file; comments around each value explain their use.
+There are many other options that can be tweaked in the config file. Comments around each value explain their use.
 
 ## Commands
 
@@ -90,7 +90,7 @@ For now, the manager application is invoked by running `python main.py` with com
 * **`tags`**: Similar to the `xml` command and deals with the same input file, but this records all of the tags attached to each sample, rather than their basic metadata. This will likely take much longer. Two required parameters:
   * **taxon** – the NCBI taxon ID used in the search (e.g. txid408170)
   * **filename** - the path to the XML file to be parsed.
-* **`runs`**: Queries the compendium database for samples that have an SRS (sample) number, but not an SRR (run) number. This list is then sent to the NCBI eUtils API to retrieve the runs. The only parameter is a limit on how many samples to evaluate (default 2000).
+* **`runs`**: Queries the compendium database for samples that have an SRS (sample) number, but not an SRR (run) number. This list is then sent to the NCBI eUtils API to retrieve the runs. The only parameter is a limit on how many samples to evaluate (default 2000). This is required for downloading the raw data.
 
 ## Downloading metadata from NCBI
 We currently extract relevant samples from search results on [the BioSample website](https://www.ncbi.nlm.nih.gov/biosample) using this query:
