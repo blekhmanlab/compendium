@@ -2,6 +2,7 @@
 This module provides helper functions for interacting with a SQLite database
 and loading external data into it.
 """
+from datetime import datetime
 import sqlite3
 import time
 import xml.etree.ElementTree as ET
@@ -262,7 +263,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     # TODO: check if we recorded tags for samples that we skipped
     
 
-def find_runs(count, per_query=80):
+def find_runs(count, per_query=80, verbose=False):
     """
     Queries the NCBI eUtils API to use sample IDs ("SRS" codes)
     to get information about runs ("SRR" codes) that can then
@@ -285,15 +286,25 @@ def find_runs(count, per_query=80):
     print(f'Found {len(todo)} samples to process')
     cursor = 0
     multiple_runs = 0
+    since_update = 0
+    lap1 = datetime.now()
     while cursor < len(todo):
-        if cursor % 1000 == 0:
-            print(f'COMPLETE: {cursor}')
+        # If we send requests 70 or 80 samples at a time,
+        # we can't just use (cursor % 1000 == 0) to decide
+        # when to update, because the cursor will probably skip
+        # right over the round numbers
+        if since_update > 1000:
+            lap2 = datetime.now()
+            print(f'COMPLETE: {cursor} ({(lap2-lap1).total_seconds()} seconds)')
+            since_update = 0
+            lap1 = lap2
 
         url = config.esearch_url
         # Build up the URL project by project:
         for _ in range(0, per_query):
             url += f'{todo[cursor]}[accn] or '
             cursor += 1
+            since_update += 1
             if cursor == len(todo):
                 break # in case the total isn't a multiple of "per_query"
         url = url[:-4] # trim off trailing " or "
@@ -301,8 +312,11 @@ def find_runs(count, per_query=80):
             print(url)
             print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
             exit(1)
-        print('Next request')
+
+        if verbose:
+            print('Next request')
         time.sleep(0.5)
+
         try:
             req = requests.get(url, timeout=config.timeout)
         except requests.exceptions.HTTPError:
@@ -334,11 +348,11 @@ def find_runs(count, per_query=80):
         except ET.ParseError:
             print("WARNING: Misformed response from call to eFetch. Skipping.")
             continue
-        multiple_runs += _record_data(tree)
+        multiple_runs += _record_data(tree, verbose)
 
     print(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.\n\n")
 
-def _record_data(data):
+def _record_data(data, verbose=False):
     """Parses a response from the efetch endpoint that has info about
     all the samples in the query."""
     connection = Connection()
@@ -377,7 +391,8 @@ def _record_data(data):
         elif len(tosave['run']) == 1:
             tosave['run'] = tosave['run'][0]
         else:
-            print(f"MULTIPLE RUNS! {len(tosave['run'])}")
+            if verbose:
+                print(f"MULTIPLE RUNS! {len(tosave['run'])}")
             multiple_runs += 1
             delim = ';'
             tosave['run'] = delim.join(tosave['run'])
