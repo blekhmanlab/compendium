@@ -288,6 +288,9 @@ def find_runs(count, per_query=80, verbose=False):
     multiple_runs = 0
     since_update = 0
     lap1 = datetime.now()
+
+    error_previous = False # if we get two timeouts in a row, just stop
+
     while cursor < len(todo):
         # If we send requests 70 or 80 samples at a time,
         # we can't just use (cursor % 1000 == 0) to decide
@@ -321,6 +324,10 @@ def find_runs(count, per_query=80, verbose=False):
             req = requests.get(url, timeout=config.timeout)
         except requests.exceptions.HTTPError:
             print('ERROR: Error sending request for webenv data. Skipping.')
+            if error_previous:
+                print('Two errors in a row. Bailing.')
+                exit(1)
+            error_previous = True
             continue
 
         try:
@@ -328,6 +335,10 @@ def find_runs(count, per_query=80, verbose=False):
         except ET.ParseError:
             print(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}')
             print('Skipping.')
+            if error_previous:
+                print('Two errors in a row. Bailing.')
+                exit(1)
+            error_previous = True
             continue
 
         webenv = tree.find('WebEnv')
@@ -335,20 +346,42 @@ def find_runs(count, per_query=80, verbose=False):
             print('\n---------\n')
             print(req.text)
             print("WARNING: Got response without a 'webenv' field. Skipping.")
+            if error_previous:
+                print('Two errors in a row. Bailing.')
+                exit(1)
+            error_previous = True
             continue
+        
         url = f'{config.efetch_url}&WebEnv={webenv.text}'
         if len(url) >1950:
             print(url)
             print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
             exit(1)
 
-        req = requests.get(url, timeout=config.timeout)
+        try:
+            req = requests.get(url, timeout=config.timeout)
+        except ReadTimeoutError as e:
+            # It's not an issue to skip arbitrary attempts because the samples aren't
+            # being evaluated in a particular order. If 80 samples are skipped, they'll
+            # be picked up in subsequent runs
+            print('Timeout sending request. Skipping.')
+            if error_previous:
+                print('Two errors in a row. Bailing.')
+                exit(1)
+            error_previous = True
+            continue
+
         try:
             tree = ET.fromstring(req.text)
         except ET.ParseError:
             print("WARNING: Misformed response from call to eFetch. Skipping.")
+            if error_previous:
+                print('Two errors in a row. Bailing.')
+                exit(1)
+            error_previous = True
             continue
         multiple_runs += _record_data(tree, verbose)
+        error_previous = False
 
     print(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.\n\n")
 
