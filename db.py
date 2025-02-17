@@ -211,7 +211,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     done = -1
     skipped = 0
 
-    
+
     # make a list of samples we've already recorded, so an XML file can be parsed in
     # stages if necessary
     recognized_samples = connection.read('SELECT srs FROM samples ORDER BY 1')
@@ -261,7 +261,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
 
     print(f'{len(biosamples)} total samples evaluated, {skipped} skipped')
     # TODO: check if we recorded tags for samples that we skipped
-    
+
 
 def find_runs(count, per_query=80, verbose=False):
     """
@@ -294,9 +294,9 @@ def find_runs(count, per_query=80, verbose=False):
     while cursor < len(todo):
         # If we send requests 70 or 80 samples at a time,
         # we can't just use (cursor % 1000 == 0) to decide
-        # when to update, because the cursor will probably skip
+        # when to update the user, because the cursor will probably skip
         # right over the round numbers
-        if since_update > 1000:
+        if since_update > 5000:
             lap2 = datetime.now()
             print(f'COMPLETE: {cursor} ({(lap2-lap1).total_seconds()} seconds)')
             since_update = 0
@@ -351,7 +351,7 @@ def find_runs(count, per_query=80, verbose=False):
                 exit(1)
             error_previous = True
             continue
-        
+
         url = f'{config.efetch_url}&WebEnv={webenv.text}'
         if len(url) >1950:
             print(url)
@@ -360,11 +360,11 @@ def find_runs(count, per_query=80, verbose=False):
 
         try:
             req = requests.get(url, timeout=config.timeout)
-        except ReadTimeoutError as e:
+        except Exception as e:
             # It's not an issue to skip arbitrary attempts because the samples aren't
             # being evaluated in a particular order. If 80 samples are skipped, they'll
             # be picked up in subsequent runs
-            print('Timeout sending request. Skipping.')
+            print('Error sending request. Skipping.')
             if error_previous:
                 print('Two errors in a row. Bailing.')
                 exit(1)
@@ -406,6 +406,8 @@ def _record_data(data, verbose=False):
                 tosave['pubdate'] = entry.attrib['published']
             if 'total_bases' in entry.attrib.keys():
                 tosave['total_bases'] = entry.attrib['total_bases']
+            if 'total_spots' in entry.attrib.keys():
+                tosave['total_spots'] = entry.attrib['total_spots']
         for entry in package.iter('EXTERNAL_ID'):
             if 'namespace' in entry.attrib.keys():
                 if entry.attrib['namespace'] == 'BioProject':
