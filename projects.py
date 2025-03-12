@@ -130,7 +130,7 @@ class Project:
         """
         timestamp = int(round(datetime.now().timestamp()))
 
-        x = os.system(f'bash setup_snakemake.sh ${self.id}')
+        x = os.system(f'bash setup_snakemake.sh {self.id}')
         if x != 0:
             raise Exception(f'pip install returned non-zero exit code {x}')
 
