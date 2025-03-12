@@ -129,7 +129,7 @@ class Project:
         Starts the pipeline!!!
         """
         timestamp = int(round(datetime.now().timestamp()))
-        x = os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log --chdir={self.id} run_snakemake.slurm')
+        x = os.system(f'sbatch --job-name={self.id} -o {self.id}.{timestamp}.log --chdir={self.id} setup_snakemake.slurm')
         if x != 0:
             raise Exception(f'Call to sbatch returned non-zero exit code {x}')
         self._set_status(connection, 'running')
