@@ -131,7 +131,7 @@ def print_compendium_summary(connection):
     """
 
     counts = connection.read("""
-        SELECT COUNT(DISTINCT project), COUNT(DISTINCT sample) FROM samples
+        SELECT COUNT(DISTINCT project), COUNT(srs) FROM samples
     """)
     if counts is None:
         print('No samples found in samples table.')
@@ -140,8 +140,14 @@ def print_compendium_summary(connection):
 
 
     counts = connection.read("""
-        SELECT COUNT(DISTINCT project), COUNT(DISTINCT sample)
-        FROM asv_counts
+        SELECT COUNT(DISTINCT project), COUNT(sample)
+        FROM (
+            SELECT s.project, ac.sample, COUNT(ac.entryid)
+            FROM asv_counts ac
+            LEFT JOIN samples s
+                ON ac.sample=s.srs
+            GROUP BY 1,2
+        )
     """)
     if counts is None:
         print('No projects found in asv_counts table.')
