@@ -97,6 +97,7 @@ class Connection(object):
                 instrument TEXT,
                 pubdate TEXT,
                 total_bases INTEGER,
+                total_spots INTEGER,
                 geo_loc_name TEXT
             )
         """)
@@ -459,6 +460,9 @@ def _record_data(data, verbose=False):
         if tosave.get('total_bases') is not None:
             towrite += 'total_bases=?, '
             toparam.append(tosave.get('total_bases'))
+        if tosave.get('total_spots') is not None:
+            towrite += 'total_spots=?, '
+            toparam.append(tosave.get('total_spots'))
         if tosave.get('instrument') is not None:
             towrite += 'instrument=?, '
             toparam.append(tosave.get('instrument'))
