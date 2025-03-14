@@ -188,7 +188,7 @@ class Project:
             {
                 'Result file: ASVs.fa': os.path.exists(f'{self.id}/ASVs.fa'),
                 'Result file: ASVs_counts.tsv': os.path.exists(f'{self.id}/ASVs_counts.tsv'),
-                'Result file: ASVs_taxonomy.tsv': os.path.exists(f'{self.id}/ASVs_taxonomy.tsv'),
+                'Result file: summary.tsv': os.path.exists(f'{self.id}/summary.tsv')
             })
         ]
 
@@ -444,7 +444,7 @@ class Project:
         # example entry: ('SRR123', 'ASV_7', 23)
         return(to_write)
 
-    def _load_asv_data(self):
+    def _load_asv_seqs(self):
         """Loads a tab-delimited file in which each row is
         a numbered ASV, associated with its inferred taxonomic
         source."""
@@ -463,25 +463,9 @@ class Project:
                     seq = seq[0:-1] # strip trailing newline
                 seqs[asv]=seq
 
-        taxa = {}
-        # The get taxonomic assignments
-        with open(f'{self.id}/ASVs_taxonomy.tsv', 'r') as file:
-            file.readline() # skip header
-            for line in file:
-                line = line.split('\t')
-                line[-1] = line[-1][:-1]
-                taxa[line[0]] = line[1:]
+        seqs = [(self.id, asv, seqs[asv]) for asv in seqs.keys()]
 
-        # example entry: (
-        #       ,
-        #       ('PRJNA1234', 'ASV_1','CCTACGGG')
-        # )
-
-        # ('ASV_1','Bacteria','Bacteroidota','Bacteroidia','Bacteroidales','Bacteroidaceae','Bacteroides')
-        assignments = [tuple([asv]+values) for asv, values in taxa.items()]
-        seqs = [(self.id, asv, seqs[asv]) for asv in taxa.keys()]
-
-        return(assignments, seqs)
+        return(seqs)
 
     def Save_results(self, connection):
         """
@@ -491,7 +475,7 @@ class Project:
         self._record_if_paired(connection)
 
         counts = self._load_counts()
-        assignments, seqs = self._load_asv_data()
+        seqs = self._load_asv_seqs()
 
         # save counts
         connection.write('INSERT INTO asv_counts (sample, asv, count) VALUES (?,?,?)', counts)
@@ -513,19 +497,6 @@ class Project:
         ids = {}
         for asv, asv_id in asv_ids:
             ids[asv] = asv_id
-        # each assignment entry has a project-level ASV id (ASV_1, ASV_2, etc), but
-        # we want to swap that out for the unique ID assigned by SQLite when we saved the ASV's sequence:
-        # (You can try to rewrite this as a one-liner list comprehension, but last time it looked horrific
-        # so now we have a friendly little loop.)
-        to_write = []
-        for entry in assignments:
-            current = (ids[entry[0]], 'silva_nr99_v138_train_set', *entry[1:])
-            to_write.append(current)
-
-        asv_ids = connection.write("""
-            INSERT INTO asv_assignments
-            VALUES(?,?,?,?,?,?,?,?)
-        """, to_write)
 
         self._set_status(connection, 'complete')
 
@@ -535,9 +506,9 @@ class Project:
         with tarfile.open(name=f'{config.archive_path}{self.id}.tar.gz', mode='w:gz') as archive:
             archive.add(f'{self.id}/.snakemake/log')
             archive.add(f'{self.id}/.snakemake/slurm_logs')
-            archive.add(f'{self.id}/ASVs_taxonomy.tsv')
             archive.add(f'{self.id}/ASVs.fa')
             archive.add(f'{self.id}/ASVs_counts.tsv')
+            archive.add(f'{self.id}/summary.tsv')
             archive.add(f'{self.id}/workflow/Snakefile')
             # find the log file
             for f in os.listdir(self.id):
