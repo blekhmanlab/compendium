@@ -15,7 +15,7 @@ def Dada_dir():
     proj = 'PRRJA12345'
     real_files = [
         'ASVs.fa','ASVs_counts.tsv',
-        'ASVs_taxonomy.tsv', 'SraAccList.txt',
+        'SraAccList.txt',
         'summary.tsv'
     ]
     fake_files = [ 'filtered_out.rds',

@@ -146,7 +146,7 @@ class Project:
         to_check = [
             f'{self.id}/ASVs.fa',
             f'{self.id}/ASVs_counts.tsv',
-            f'{self.id}/ASVs_taxonomy.tsv'
+            f'{self.id}/summary.tsv'
         ]
         # return True if all the required files are present, otherwise False
         return(False not in [os.path.exists(x) for x in to_check])
@@ -177,12 +177,11 @@ class Project:
             }),
             ('Pipeline',
             {
-                '1/6 Prefetch job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_sra_prefetch'),
-                '2/6 SRA data extraction job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_sra_to_fastq'),
-                '3/6 FASTQ filtering job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_filter'),
-                '4/6 Error modeling job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_errormodel'),
-                '5/6 ASV calculation job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_make_asv_table'),
-                '6/6 Taxonomic assignment job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_assign_taxonomy')
+                '1/5 Prefetch job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_sra_prefetch'),
+                '2/5 SRA data extraction job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_sra_to_fastq'),
+                '3/5 FASTQ filtering job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_filter'),
+                '4/5 Error modeling job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_errormodel'),
+                '5/5 ASV calculation job started': os.path.exists(f'{self.id}/.snakemake/slurm_logs/rule_make_asv_table')
             }),
             ('Results',
             {
@@ -366,9 +365,9 @@ class Project:
             'reverse_error_model.pdf',
             'err_forward_reads.rds',
             'err_reverse_reads.rds',
-            'ASV.tsv', 'asv.rds',
+            'ASV.tsv',
             'ASVs.fa','ASVs_counts.tsv',
-            'ASVs_taxonomy.tsv'
+            'summary.tsv'
         ]
         for f in files:
             try:
@@ -446,8 +445,7 @@ class Project:
 
     def _load_asv_seqs(self):
         """Loads a tab-delimited file in which each row is
-        a numbered ASV, associated with its inferred taxonomic
-        source."""
+        a numbered ASV, associated with its sequence."""
 
         seqs = {}
         # Get exact sequences
