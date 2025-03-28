@@ -477,34 +477,56 @@ class Project:
         """
         Loads the DADA2 results and saves them to the DB
         """
-        print('Saving results!')
-        self._record_if_paired(connection)
 
-        counts = self._load_counts()
-        seqs = self._load_asv_seqs()
-
-        # save counts
-        connection.write('INSERT INTO asv_counts (sample, asv, count) VALUES (?,?,?)', counts)
-        # save sequences
-        connection.write("""
-            INSERT INTO asv_sequences(project, asv, seq)
-            VALUES(?,?,?)
-        """, seqs)
-
-        # figure out which ASV ID goes with which ASV we just recorded:
-        # (This would be much tidier to use a RETURNING clause in the previous
-        # query, but that doesn't work with `executemany()`)
-        asv_ids = connection.read("""
-            SELECT asv, asv_id
-            FROM asv_sequences
+        # first, check to make sure we haven't already recorded this
+        status = connection.read("""
+            SELECT status
+            FROM status
             WHERE project=?
         """, (self.id,))
+        if len(status) == 0 or status[0][0] != 'complete':
+            ids = {}
+            for asv, asv_id in asv_ids:
+                ids[asv] = asv_id
 
-        ids = {}
-        for asv, asv_id in asv_ids:
-            ids[asv] = asv_id
 
-        self._set_status(connection, 'complete')
+            connection.write("""
+                UPDATE status
+                SET status=?
+                WHERE project=?
+            """, (status, self.id))
+
+
+            print('Saving results!')
+            self._record_if_paired(connection)
+
+            counts = self._load_counts()
+            seqs = self._load_asv_seqs()
+
+            # save counts
+            connection.write('INSERT INTO asv_counts (sample, asv, count) VALUES (?,?,?)', counts)
+            # save sequences
+            connection.write("""
+                INSERT INTO asv_sequences(project, asv, seq)
+                VALUES(?,?,?)
+            """, seqs)
+
+            # figure out which ASV ID goes with which ASV we just recorded:
+            # (This would be much tidier to use a RETURNING clause in the previous
+            # query, but that doesn't work with `executemany()`)
+            asv_ids = connection.read("""
+                SELECT asv, asv_id
+                FROM asv_sequences
+                WHERE project=?
+            """, (self.id,))
+
+            ids = {}
+            for asv, asv_id in asv_ids:
+                ids[asv] = asv_id
+
+            self._set_status(connection, 'complete')
+        else:
+            print('Database reflects that results have already been recorded. Skipping.')
 
         if not confirm_destruct('Results recorded. Archive results?'):
             return()
