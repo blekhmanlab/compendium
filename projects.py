@@ -33,7 +33,7 @@ class Project:
     """
     def __init__(self, name):
         """
-        Each Project instance stores metadata about a single BioProject and
+        Each Project instance stores metadata about a single BioProject
         """
         self.id = name # BioProject ID, e.g. PRJNA12345
         self.samples = [] # each item is instance of Sample. Generated from parsing results.
@@ -284,12 +284,20 @@ class Project:
 
     def _evaluate_flags(self):
         """Checks project stats against configured thresholds."""
-        if self.merged_warn > config.project_merged_worrisome:
-            self.re_run = True
-            self.errors.append(f'{int(self.merged_warn*100)}% of samples had warning for merged read count.')
-        if self.merged_error > config.project_merged_error:
-            self.re_run = True
-            self.errors.append(f'{int(self.merged_error*100)}% of samples had ERROR for merged read count.')
+
+        if self.paired:
+            if self.merged_warn > config.project_merged_worrisome:
+                self.re_run = True
+                self.errors.append(f'{int(self.merged_warn*100)}% of samples had warning for merged read count.')
+            if self.merged_error > config.project_merged_error:
+                self.re_run = True
+                self.errors.append(f'{int(self.merged_error*100)}% of samples had ERROR for merged read count.')
+            if self.chimeric_warn > config.project_chimera_worrisome:
+                self.re_run = True
+                self.errors.append(f'{int(self.chimeric_warn*100)}% of samples had warning for chimeric read count.')
+            if self.chimeric_error > config.project_chimera_error:
+                self.re_run = True
+                self.errors.append(f'{int(self.chimeric_error*100)}% of samples had ERROR for chimeric read count.')
 
         # Don't bother checking the percentage of reads retained if the project
         # is going to be re-run as single-ended anyway. We could probably catch
@@ -306,7 +314,7 @@ class Project:
             self.discard = True
             self.errors.append(f'{int(self.retained_error*100)}% of samples had ERROR for reads retained.')
 
-        # Chimeric reads
+        # Chimeric reads, if we've already established it's not paired-end data
         if self.chimeric_warn > config.project_chimera_worrisome:
             self.discard = True
             self.errors.append(f'{int(self.chimeric_warn*100)}% of samples had warning for chimeric read count.')
