@@ -510,12 +510,17 @@ class Project:
             return()
 
         with tarfile.open(name=f'{config.archive_path}{self.id}.tar.gz', mode='w:gz') as archive:
-            archive.add(f'{self.id}/.snakemake/log')
-            archive.add(f'{self.id}/.snakemake/slurm_logs')
-            archive.add(f'{self.id}/ASVs.fa')
-            archive.add(f'{self.id}/ASVs_counts.tsv')
-            archive.add(f'{self.id}/summary.tsv')
-            archive.add(f'{self.id}/workflow/Snakefile')
+            toarchive = [
+                f'{self.id}/.snakemake/log',
+                f'{self.id}/.snakemake/slurm_logs',
+                f'{self.id}/ASVs.fa',
+                f'{self.id}/ASVs_counts.tsv',
+                f'{self.id}/summary.tsv',
+                f'{self.id}/workflow/Snakefile'
+            ]
+            for todo in [x for x in toarchive if os.path.exists(x)]:
+                archive.add(todo)
+
             # find the log file
             for f in os.listdir(self.id):
                 if f.endswith('.log') or f.endswith('.pdf'):
