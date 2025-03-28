@@ -264,7 +264,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     # TODO: check if we recorded tags for samples that we skipped
 
 
-def find_runs(count, per_query=80, verbose=False):
+def find_runs(count, per_query, verbose=False):
     """
     Queries the NCBI eUtils API to use sample IDs ("SRS" codes)
     to get information about runs ("SRR" codes) that can then
@@ -476,7 +476,7 @@ def _record_data(data, verbose=False):
         connection.write(towrite, toparam)
     return multiple_runs
 
-def find_asv_data(count=25):
+def find_asv_data(count):
     """
     Runs a heuristic process for inferring which hypervariable regions were
     targeted in an amplicon sequencing project

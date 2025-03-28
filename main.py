@@ -3,6 +3,7 @@ This module assists in the generation and maintenance of a
 database containing microbial ecology data from human microbiome
 samples.
 """
+import click
 
 from datetime import datetime
 import sys # for the command-line params
@@ -12,123 +13,180 @@ import db
 import projects
 import management
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print('No command given. Exiting.')
+@click.group()
+def cli():
+    pass
+
+@cli.command()
+@click.option('--todo', default=2000, help='Number of samples to annotate in this run')
+@click.option('--perquery', default=80, help='Number of samples to request in each web request. Mostly limited by URL length.')
+def runs():
+    db.find_runs(todo, per_query=perquery)
+
+@cli.command()
+@click.option('--todo', default=100, help='Number of projects to annotate in this run')
+def asvs():
+    db.find_asv_data(100)
+
+@cli.command()
+@click.argument('taxid')
+@click.argument('file')
+def xml():
+    """Parse exported BioSample search results. This loads sample data, but
+    skips key/value pairs associated with each sample.
+
+    TAXID is the NCBI taxon ID associated with your samples (e.g. txid408170)
+    FILE is the relative path to the XML file to be loaded (e.g. txid408170.xml)
+    """
+    db.load_xml(taxid, file, save_samples=True, save_tags=False)
+
+@cli.command()
+@click.argument('taxid')
+@click.argument('file')
+def tags():
+    """Parse exported BioSample search results. This loads key/value pairs associated
+    with each sample, but does not populate the "samples" table itself.
+
+    TAXID is the NCBI taxon ID associated with your samples (e.g. txid408170)
+    FILE is the relative path to the XML file to be loaded (e.g. txid408170.xml)
+    """
+    if len(sys.argv) < 4:
+        print('The "tags" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
+        exit(1)
+    db.load_xml(taxid, file, save_samples=False, save_tags=True)
+
+@cli.command()
+@click.argument('projectid')
+def runit():
+    """Process a single project for the first time.
+
+    PROJECTID is a BioProject ID (e.g. PRJNA12345)
+    """
+    proj = projects.Project(project)
+    connection = db.Connection()
+    proj.initialize_pipeline(connection)
+    proj.RUN(connection)
+
+@cli.command()
+@click.argument('projectid')
+def discard():
+    """Clean up a failed project.
+
+    PROJECTID is a BioProject ID (e.g. PRJNA12345)
+    """
+    proj = projects.Project(projectid)
+
+    confirm = input(f'Really discard project {projectid}? (y/n) ')
+    if confirm != 'y':
+        print('User input was not "y"; skipping.')
         exit(0)
-    # only command-line param is how many to do in this session
-    if sys.argv[1] == 'runs':
-        TODO = 2000 if len(sys.argv) < 3 else sys.argv[2]
-        db.find_runs(TODO, per_query=80)
-    elif sys.argv[1] == 'asvs':
-        db.find_asv_data(100)
-    elif sys.argv[1] == 'xml':
-        if len(sys.argv) < 4:
-            print('The "xml" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
-            exit(1)
-        db.load_xml(sys.argv[2], sys.argv[3],
-            save_samples=True, save_tags=False)
-    elif sys.argv[1] == 'tags':
-        if len(sys.argv) < 4:
-            print('The "tags" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
-            exit(1)
-        db.load_xml(sys.argv[2], sys.argv[3],
-            save_samples=False, save_tags=True)
-    elif sys.argv[1] == 'runit':
-        # process a single project
-        if len(sys.argv) < 3:
-            print('ERROR: No project ID specified.')
-            exit(1)
-        proj = projects.Project(sys.argv[2])
-        connection = db.Connection()
-        proj.initialize_pipeline(connection)
-        proj.RUN(connection)
-    elif sys.argv[1] == 'discard':
-        # remove a project
-        if len(sys.argv) < 3:
-            print('ERROR: No project ID specified.')
-            exit(1)
-        proj = projects.Project(sys.argv[2])
 
-        confirm = input(f'Really discard project {sys.argv[2]}? (y/n) ')
-        if confirm != 'y':
-            print('User input was not "y"; skipping.')
-            exit(0)
-        if len(sys.argv) < 4:
-            REASON = input('Provide reason for DB: ')
-        else:
-            REASON = sys.argv[3]
-        proj.errors.append(REASON)
-        connection = db.Connection()
-        proj.Discard(connection)
-    elif sys.argv[1] == 'again':
-        # retry a project
-        if len(sys.argv) < 3:
-            print('ERROR: No project ID specified.')
-            exit(1)
-        proj = projects.Project(sys.argv[2])
-        connection = db.Connection()
-        proj.RUN(connection)
-    elif sys.argv[1] == 'status':
-        # check project status
-        if len(sys.argv) < 3:
-            print('ERROR: No project ID specified.')
-            exit(1)
-        PID = sys.argv[2]
+    REASON = input('Provide reason for DB: ')
 
-        proj = projects.Project(PID)
-        if proj.check_if_done(): # true if it's complete
-            proj.Load_results_summary()
-            proj.print_errors()
-        else:
-            proj.Report_progress()
+    proj.errors.append(REASON)
+    connection = db.Connection()
+    proj.Discard(connection)
 
-    elif sys.argv[1] == 'eval':
-        if len(sys.argv) < 3:
-            print('ERROR: No project ID specified.')
-            exit(1)
-        PID = sys.argv[2]
+@cli.command()
+@click.argument('projectid')
+def again():
+    """Retry a failed project.
 
-        proj = projects.Project(PID)
-        if not proj.check_if_done(): # true if it's complete
-            proj.Report_progress()
+    PROJECTID is a BioProject ID (e.g. PRJNA12345)
+    """
+    proj = projects.Project(projectid)
+    connection = db.Connection()
+    proj.RUN(connection)
+
+@cli.command()
+@click.argument('projectid')
+def status():
+    """Check the status of a single project.
+
+    PROJECTID is a BioProject ID (e.g. PRJNA12345)
+    """
+    proj = projects.Project(projectid)
+    if proj.check_if_done(): # true if it's complete
         proj.Load_results_summary()
         proj.print_errors()
-        exit(0)
+    else:
+        proj.Report_progress()
 
-        connection = db.Connection()
-        proj.REACT(connection)
-    elif sys.argv[1] == 'compendium':
-        connection = db.Connection()
-        management.print_compendium_summary(connection)
-    elif sys.argv[1] == 'summary':
-        connection = db.Connection()
-        current = management.determine_projects(connection)
-        management.print_projects_summary(*current)
-    elif sys.argv[1] == 'FORWARD':
-        connection = db.Connection()
-        current = management.determine_projects(connection)
-        management.print_projects_summary(*current)
-        management.advance_projects(*current, connection)
-    elif sys.argv[1] == 'autoforward':
-        connection = db.Connection()
-        # Process the existing projects:
-        current = management.determine_projects(connection)
-        management.print_projects_summary(*current)
-        management.advance_projects(*current, connection, auto=True)
+@cli.command()
+@click.argument('projectid')
+def eval():
+    """Evaluate the progress of a single project and process
+    its results into the database if appropriate.
 
-        # Trigger new jobs automatically
-        done, running, not_done = current # just unpacking
-        TOSTART = config.max_projects-len(running+not_done)
+    PROJECTID is a BioProject ID (e.g. PRJNA12345)
+    """
+    proj = projects.Project(projectid)
+    if not proj.check_if_done(): # true if it's complete
+        proj.Report_progress()
+    proj.Load_results_summary()
+    proj.print_errors()
+    exit(0)
 
-        todo = []
-        if TOSTART > 0:
-            todo = management.find_todo(connection, needed=TOSTART, max_samples=1000)
+    connection = db.Connection()
+    proj.REACT(connection)
 
-        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        print(f'{now}: {len(running+not_done)} projects running. Starting {len(todo)} additional projects: {todo}')
-        for pid in todo:
-            print(f'Launching {pid}')
-            proj = projects.Project(pid)
-            proj.initialize_pipeline(connection)
-            proj.RUN(connection)
+@cli.command()
+def compendium():
+    """Summarize the content of the compendium.
+    """
+    connection = db.Connection()
+    management.print_compendium_summary(connection)
+
+@cli.command()
+def summary():
+    """Summarize the status of any projects with steps
+    remaining in their processing pipeline.
+    """
+    connection = db.Connection()
+    current = management.determine_projects(connection)
+    management.print_projects_summary(*current)
+
+@cli.command()
+def FORWARD():
+    """Interactive process for evaluating all currently pending
+    projects. Prompts the user to decide how to deal with
+    results.
+    """
+    connection = db.Connection()
+    current = management.determine_projects(connection)
+    management.print_projects_summary(*current)
+    management.advance_projects(*current, connection)
+
+@cli.command()
+def autoforward():
+    """Interactive process for evaluating all currently pending
+    projects. Prompts the user to decide how to deal with
+    results.
+
+    Unlike the FORWARD command, this launches new projects as
+    others are completed.
+    """
+    connection = db.Connection()
+    # Process the existing projects:
+    current = management.determine_projects(connection)
+    management.print_projects_summary(*current)
+    management.advance_projects(*current, connection, auto=True)
+
+    # Trigger new jobs automatically
+    done, running, not_done = current # just unpacking
+    TOSTART = config.max_projects-len(running+not_done)
+
+    todo = []
+    if TOSTART > 0:
+        todo = management.find_todo(connection, needed=TOSTART, max_samples=1000)
+
+    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    print(f'{now}: {len(running+not_done)} projects running. Starting {len(todo)} additional projects: {todo}')
+    for pid in todo:
+        print(f'Launching {pid}')
+        proj = projects.Project(pid)
+        proj.initialize_pipeline(connection)
+        proj.RUN(connection)
+
+if __name__ == "__main__":
+    cli()
