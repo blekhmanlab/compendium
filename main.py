@@ -122,13 +122,12 @@ def eval():
     PROJECTID is a BioProject ID (e.g. PRJNA12345)
     """
     proj = projects.Project(projectid)
-    if not proj.check_if_done(): # true if it's complete
-        proj.Report_progress()
-    proj.Load_results_summary()
-    proj.print_errors()
+    if proj.Report_progress(): # true if it's complete
+        proj.Load_results_summary()
+        proj.print_errors()
 
-    connection = db.Connection()
-    proj.REACT(connection)
+        connection = db.Connection()
+        proj.REACT(connection)
 
 @cli.command()
 def compendium():
