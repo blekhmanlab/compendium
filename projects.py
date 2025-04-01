@@ -484,19 +484,8 @@ class Project:
             FROM status
             WHERE project=?
         """, (self.id,))
+
         if len(status) == 0 or status[0][0] != 'complete':
-            ids = {}
-            for asv, asv_id in asv_ids:
-                ids[asv] = asv_id
-
-
-            connection.write("""
-                UPDATE status
-                SET status=?
-                WHERE project=?
-            """, (status, self.id))
-
-
             print('Saving results!')
             self._record_if_paired(connection)
 
@@ -511,22 +500,9 @@ class Project:
                 VALUES(?,?,?)
             """, seqs)
 
-            # figure out which ASV ID goes with which ASV we just recorded:
-            # (This would be much tidier to use a RETURNING clause in the previous
-            # query, but that doesn't work with `executemany()`)
-            asv_ids = connection.read("""
-                SELECT asv, asv_id
-                FROM asv_sequences
-                WHERE project=?
-            """, (self.id,))
-
-            ids = {}
-            for asv, asv_id in asv_ids:
-                ids[asv] = asv_id
-
             self._set_status(connection, 'complete')
         else:
-            print('Database reflects that results have already been recorded. Skipping.')
+            print('Database reflects that results have already been recorded. Skipping this step.')
 
         if not confirm_destruct('Results recorded. Archive results?'):
             return()
@@ -558,7 +534,7 @@ class Project:
         shutil.rmtree(f'{self.id}')
         if not os.path.exists(self.id):
             self._set_status(connection, 'done')
-        return
+        return()
 
     def REACT(self, connection):
         '''Acts on the results of the pipeline completion'''
