@@ -145,10 +145,11 @@ def print_compendium_summary(connection):
             SELECT s.project, ac.sample, COUNT(ac.entryid)
             FROM asv_counts ac
             LEFT JOIN samples s
-                ON ac.sample=s.srs
+                ON ac.sample=s.srr
             GROUP BY 1,2
         )
     """)
+
     if counts is None:
         print('No projects found in asv_counts table.')
         return()
