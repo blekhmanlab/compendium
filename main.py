@@ -6,7 +6,6 @@ samples.
 import click
 
 from datetime import datetime
-import sys # for the command-line params
 
 import config
 import db
@@ -21,11 +20,16 @@ def cli():
 @click.option('--todo', default=2000, help='Number of samples to annotate in this run')
 @click.option('--perquery', default=80, help='Number of samples to request in each web request. Mostly limited by URL length.')
 def runs():
+    """Sends requests to the NCBI servers to annotate BioSamples with their SRA run accession codes.
+    """
     db.find_runs(todo, per_query=perquery)
 
 @cli.command()
 @click.option('--todo', default=100, help='Number of projects to annotate in this run')
 def asvs():
+    """Runs a heuristic process for inferring which hypervariable regions were
+    targeted in an amplicon sequencing project.
+    """
     db.find_asv_data(100)
 
 @cli.command()
@@ -50,9 +54,6 @@ def tags():
     TAXID is the NCBI taxon ID associated with your samples (e.g. txid408170)
     FILE is the relative path to the XML file to be loaded (e.g. txid408170.xml)
     """
-    if len(sys.argv) < 4:
-        print('The "tags" command requires two parameters: a taxon ID (e.g. txid408170) and the name of the file.')
-        exit(1)
     db.load_xml(taxid, file, save_samples=False, save_tags=True)
 
 @cli.command()
@@ -78,7 +79,7 @@ def discard():
 
     confirm = input(f'Really discard project {projectid}? (y/n) ')
     if confirm != 'y':
-        print('User input was not "y"; skipping.')
+        click.secho('User input was not "y"; skipping.', fg='red')
         exit(0)
 
     REASON = input('Provide reason for DB: ')
@@ -125,7 +126,6 @@ def eval():
         proj.Report_progress()
     proj.Load_results_summary()
     proj.print_errors()
-    exit(0)
 
     connection = db.Connection()
     proj.REACT(connection)
@@ -181,9 +181,11 @@ def autoforward():
         todo = management.find_todo(connection, needed=TOSTART, max_samples=1000)
 
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    print(f'{now}: {len(running+not_done)} projects running. Starting {len(todo)} additional projects: {todo}')
+    click.secho(
+        f"{now}: {len(running+not_done)} projects running. Starting {len(todo)} additional projects: {todo}"
+    )
     for pid in todo:
-        print(f'Launching {pid}')
+        click.secho(f'Launching {pid}', fg='green')
         proj = projects.Project(pid)
         proj.initialize_pipeline(connection)
         proj.RUN(connection)
