@@ -8,6 +8,7 @@ import os
 import shutil
 import tarfile
 
+import click
 import sqlite3
 
 import config
@@ -22,7 +23,7 @@ def confirm_destruct(prompt):
     if confirm == 'y':
         return True
     else:
-        print('User input was not "y"; skipping.')
+        click.secho('User input was not "y"; skipping.', fg='red')
         return False
 
 class Project:
@@ -112,11 +113,11 @@ class Project:
         try:
             connection.write('INSERT INTO status (project, status) VALUES (?, ?);', (self.id, 'initialized'))
         except sqlite3.IntegrityError as ex:
-            print('Encountered error writing new project entry to db, likely because project already exists. Error:')
-            print(ex)
+            click.secho('Encountered error writing new project entry to db, likely because project already exists. Error:', fg='red')
+            click.secho(ex, fg='red')
             confirm = input('Continue? (y/n) ')
             if confirm != 'y':
-                print('Input was not "y"; bailing.')
+                click.secho('Input was not "y"; bailing.', fg='red')
                 exit(0)
         x = os.system(f"git clone --single-branch --depth 1 {config.snakemake_git} {self.id}")
         if x != 0:
@@ -159,13 +160,13 @@ class Project:
         return(os.path.exists(f'{self.id}/running.txt'))
 
     def Report_progress(self):
-        print(self)
+        click.secho(self)
         if self.check_if_done():
-            print('DONE!')
+            click.secho('DONE!', fg='green')
             return(True)
 
         if self.check_if_running():
-            print('\n===============\nCURRENTLY RUNNING\n===============\n')
+            click.secho('\n===============\nCURRENTLY RUNNING\n===============\n', fg='green')
 
         tests = [
             ('Initialization',
@@ -193,9 +194,12 @@ class Project:
 
         arrow = True # point at the earliest test that fails
         for category in tests:
-            print(f'\n======{category[0]}======')
+            click.secho(f'\n======{category[0]}======')
             for string, test in category[1].items():
-                print(f"{'✓' if test else 'X'}   {string} {'  <<< XXXXXXX <<<' if arrow and not test else ''}")
+                click.secho(
+                    f"{'✓' if test else 'X'}   {string} {'  <<< XXXXXXX <<<' if arrow and not test else ''}",
+                    fg='green' if test else 'red'
+                )
                 if arrow and not test:
                     arrow = False # only print one arrow
 
@@ -325,7 +329,7 @@ class Project:
     # NOTE: THIS METHOD DELETES FILES AND STARTS PIPELINES
     def Rerun_as_single_end(self, connection):
         """When a paired-end dataset should be re-evaluated without the reverse reads."""
-        print(f'Re-running {self.id} as single end.')
+        click.secho(f'Re-running {self.id} as single end.', fg='green')
         if not self.paired:
             raise(Exception('Cannot re-run project as single-end; it wasnt paired-end to begin with.'))
 
@@ -349,7 +353,7 @@ class Project:
             try:
                 os.remove(f)
             except OSError as e:
-                print(f'Error deleting {f}: {e.strerror}')
+                click.secho(f'Error deleting {f}: {e.strerror}', fg='red')
 
     # NOTE: THIS METHOD DELETES FILES
     def _remove_previous_dada(self):
@@ -365,7 +369,7 @@ class Project:
         except FileNotFoundError:
                 pass # no guarantee it was even made
         except OSError as e:
-            print(f'Error deleting dir {self.id}/intermediate: {e.strerror}')
+            click.secho(f'Error deleting dir {self.id}/intermediate: {e.strerror}', fg='red')
 
         files = [
             'filtered_out.rds',
@@ -383,7 +387,7 @@ class Project:
             except FileNotFoundError:
                 pass # if it's gone, it's fine
             except OSError as e:
-                print(f'Error deleting {f}: {e.strerror}')
+                click.secho(f'Error deleting {f}: {e.strerror}', fg='red')
         # Don't delete the old summary file, just scoot it elsewhere
         if os.path.exists(f'{self.id}/previous_summary.tsv'):
             os.rename(f'{self.id}/previous_summary.tsv', f'{self.id}/previous_previous_summary.tsv')
@@ -396,9 +400,9 @@ class Project:
         else:
             strategy = "paired" if self.paired else "single-end"
 
-        print(f'\nPROJECT {self.id} ({strategy})')
+        click.secho(f'\nPROJECT {self.id} ({strategy})')
         for error in self.errors:
-            print(f'  {error}')
+            click.secho(f'  {error}', fg='red')
 
     def _record_if_paired(self, connection):
         """
@@ -410,7 +414,7 @@ class Project:
         """
 
         if self.paired is not None:
-            print(f"(Recording that project was {'' if self.paired else 'not '}paired-end.)")
+            click.secho(f"(Recording that project was {'' if self.paired else 'not '}paired-end.)", fg='green')
             connection.write("""
                 UPDATE status
                 SET paired=?
@@ -421,7 +425,7 @@ class Project:
         """Removes a project's files and records its status as failed"""
         self._record_if_paired(connection)
 
-        print(f'DELETING PROJECT {self.id}')
+        click.secho(f'DELETING PROJECT {self.id}', fg='green')
         self._set_status(connection, 'failed', ' / '.join(self.errors))
         shutil.rmtree(f'{self.id}')
         return(True)
@@ -486,7 +490,7 @@ class Project:
         """, (self.id,))
 
         if len(status) == 0 or status[0][0] != 'complete':
-            print('Saving results!')
+            click.secho('Saving results...', fg='green')
             self._record_if_paired(connection)
 
             counts = self._load_counts()
@@ -502,7 +506,7 @@ class Project:
 
             self._set_status(connection, 'complete')
         else:
-            print('Database reflects that results have already been recorded. Skipping this step.')
+            click.secho('Database reflects that results have already been recorded. Skipping this step.', fg='yellow')
 
         if not confirm_destruct('Results recorded. Archive results?'):
             return()
@@ -550,7 +554,7 @@ class Project:
             self.Rerun_as_single_end(connection)
             return(True)
         # if we make it to this point, it's good to go!
-        print(f'\nProject {self.id} has passed all checks!')
+        click.secho(f'\nProject {self.id} has passed all checks!', fg='green')
         if not confirm_destruct(f'Save results of project {self.id} ({self.sample_count} samples)?'):
             return()
         self.Save_results(connection)

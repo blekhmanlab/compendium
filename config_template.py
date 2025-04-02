@@ -29,6 +29,9 @@ snakemake_git = 'git@github.com:blekhmanlab/snakemake-compendium.git'
 # How long should we wait to get a response from a web request before bailing?
 timeout = 25
 #
+# How long should we pause, in seconds, between requests?
+callpause = 0.5
+#
 # What base URLs should be used when building up queries?
 esearch_url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?tool={Tool}&email={Email}&api_key={Key}&db=sra&usehistory=y&term=' # pylint: disable=line-too-long
 efetch_url = f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?tool={Tool}&email={Email}&db=sra&query_key=1'
