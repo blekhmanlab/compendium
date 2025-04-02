@@ -46,13 +46,13 @@ def print_projects_summary(done, running, not_done):
     to status.
     """
     click.secho('\n===DONE:', fg='green')
-    [click.secho(f'   {x}', bg='green') for x in done]
+    [click.secho(f'   {x}', bg='green', fg='black') for x in done]
 
     click.secho('\n===RUNNING:', fg='yellow')
-    [click.secho(f'   {x}', bg='yellow') for x in running]
+    [click.secho(f'   {x}', bg='yellow', fg='black') for x in running]
 
     click.secho('\n===INCOMPLETE:', fg='red')
-    [click.secho(f'   {x}', bg='red') for x in not_done]
+    [click.secho(f'   {x}', bg='red', fg='black') for x in not_done]
 
 def advance_projects(done, running, not_done, connection, auto=False):
     """
@@ -137,7 +137,7 @@ def print_compendium_summary(connection):
     if counts is None:
         click.secho('No samples found in samples table.', fg='yellow')
         return()
-    click.secho(f'Samples table contains:\n{counts[0][1]} samples from\n{counts[0][0]} projects.\n', fg='green')
+    click.secho(f'Samples table contains: {counts[0][1]} samples from {counts[0][0]} projects.\n', fg='green')
 
 
     counts = connection.read("""
@@ -152,9 +152,9 @@ def print_compendium_summary(connection):
     """)
 
     if counts is None:
-        click.secho('No projects found in asv_counts table.', fg='yellow')
+        click.secho('No projects found in asv_counts table.\n', fg='yellow')
         return()
-    click.secho(f'Results table contains:\n{counts[0][1]} samples from\n{counts[0][0]} projects.\n', fg='green')
+    click.secho(f'Results table contains: {counts[0][1]} samples from {counts[0][0]} projects.\n', fg='green')
 
     counts = connection.read("""
         SELECT status, COUNT(DISTINCT project)

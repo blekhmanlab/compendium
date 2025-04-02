@@ -135,7 +135,7 @@ def status(projectid):
 @project.command()
 @click.argument('projectid')
 def eval(projectid):
-    """Checks the progress of a single study. If it's completed the pipeline,
+    """Evaluate the results of a single study. If it's completed the pipeline,
     it will evaluate the results and prompt the user to confirm that the
     project should either be saved and finalized, OR should be re-run with
     different parameters. One parameter, the BioProject ID of the project to
