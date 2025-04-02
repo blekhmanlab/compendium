@@ -2,6 +2,9 @@
 This module provides helper functions for interacting with a SQLite database
 and loading external data into it.
 """
+
+import click
+
 from datetime import datetime
 import sqlite3
 import time
@@ -23,9 +26,8 @@ class Connection(object):
         try:
             self.db = sqlite3.connect(config.db_path)
         except sqlite3.Error as ex:
-            print(f'FATAL: {ex.sqlite_errorname}')
+            click.secho(f'FATAL: {ex.sqlite_errorname}', bg='red',fg='black')
             exit(1)
-        #print('Connected!')
         self.setup_tables()
 
     def write(self, query, params=None):
@@ -79,7 +81,7 @@ class Connection(object):
             return results
 
         except sqlite3.Error as ex:
-            print(f'ERROR with db query execution: {ex}')
+            click.secho(f'ERROR with db query execution: {ex}', fg='red')
             raise
 
     def setup_tables(self):
@@ -201,13 +203,13 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
         - taxon: The taxon ID from the NCBI taxonomy browser associated with the samples.
     """
     connection = Connection()
-    print(f'\n\n\n===================\nProcessing XML for taxon {taxon}\n==========\n\n')
+    click.secho(f'\n\n\n===================\nProcessing XML for taxon {taxon}\n==========\n\n')
 
     # load the XML file
-    print('loading xml...')
+    click.secho('Loading XML...')
     tree = ET.parse(filename)
     biosamples = tree.getroot()
-    print('processing samples!')
+    click.secho('Processing samples...')
     # iterate through each entry in the file
     done = -1
     skipped = 0
@@ -224,7 +226,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     for sample in biosamples:
         done += 1
         if done % 10000 == 0:
-            print(f'   {done} out of {len(biosamples)} complete.')
+            click.secho(f'   {done} out of {len(biosamples)} complete.', fg='green')
         # find SRA ID of sample
         # example: <BioSample> <Ids> <Id db="SRA">SRS5588834</Id> </Ids> </BioSample>
         sra = None
@@ -234,7 +236,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
         if sra is None:
             skipped += 1
             if skipped % 1000 == 0:
-                print(f'Skipped {skipped} samples so far.')
+                click.secho(f'Skipped {skipped} samples so far.')
             continue # skip samples without an SRA sample
 
         #  NOTE: we used to check for BioProject ID here,
@@ -260,11 +262,11 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
             params = [(sra, tag, value) for (tag, value) in all_tags.items()]
             connection.write(sql, params)
 
-    print(f'{len(biosamples)} total samples evaluated, {skipped} skipped')
+    click.secho(f'{len(biosamples)} total samples evaluated, {skipped} skipped')
     # TODO: check if we recorded tags for samples that we skipped
 
 
-def find_runs(count, per_query=80, verbose=False):
+def find_runs(count, per_query, verbose=False):
     """
     Queries the NCBI eUtils API to use sample IDs ("SRS" codes)
     to get information about runs ("SRR" codes) that can then
@@ -284,7 +286,7 @@ def find_runs(count, per_query=80, verbose=False):
     )
 
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
-    print(f'Found {len(todo)} samples to process')
+    click.secho(f'Found {len(todo)} samples to process')
     cursor = 0
     multiple_runs = 0
     since_update = 0
@@ -299,7 +301,7 @@ def find_runs(count, per_query=80, verbose=False):
         # right over the round numbers
         if since_update > 5000:
             lap2 = datetime.now()
-            print(f'COMPLETE: {cursor} ({(lap2-lap1).total_seconds()} seconds)')
+            click.secho(f'COMPLETE: {cursor} ({(lap2-lap1).total_seconds()} seconds)', fg='green')
             since_update = 0
             lap1 = lap2
 
@@ -313,20 +315,20 @@ def find_runs(count, per_query=80, verbose=False):
                 break # in case the total isn't a multiple of "per_query"
         url = url[:-4] # trim off trailing " or "
         if len(url) >1950:
-            print(url)
-            print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
+            click.secho(url, fg='red')
+            click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
             exit(1)
 
         if verbose:
-            print('Next request')
-        time.sleep(0.5)
+            click.secho('Next request', fg='green')
+        time.sleep(config.callpause)
 
         try:
             req = requests.get(url, timeout=config.timeout)
         except requests.exceptions.HTTPError:
-            print('ERROR: Error sending request for webenv data. Skipping.')
+            click.secho('ERROR: Error sending request for webenv data. Skipping.', fg='red')
             if error_previous:
-                print('Two errors in a row. Bailing.')
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
                 exit(1)
             error_previous = True
             continue
@@ -334,29 +336,29 @@ def find_runs(count, per_query=80, verbose=False):
         try:
             tree = ET.fromstring(req.text)
         except ET.ParseError:
-            print(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}')
-            print('Skipping.')
+            click.secho(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}', fg='red')
+            click.secho('Skipping.', fg='red')
             if error_previous:
-                print('Two errors in a row. Bailing.')
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
                 exit(1)
             error_previous = True
             continue
 
         webenv = tree.find('WebEnv')
         if webenv is None:
-            print('\n---------\n')
-            print(req.text)
-            print("WARNING: Got response without a 'webenv' field. Skipping.")
+            click.secho('\n---------\n')
+            click.secho(req.text)
+            click.secho("WARNING: Got response without a 'webenv' field. Skipping.", bg='yellow',fg='black')
             if error_previous:
-                print('Two errors in a row. Bailing.')
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
                 exit(1)
             error_previous = True
             continue
 
         url = f'{config.efetch_url}&WebEnv={webenv.text}'
         if len(url) >1950:
-            print(url)
-            print('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.')
+            click.secho(url, fg='red')
+            click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
             exit(1)
 
         try:
@@ -365,9 +367,9 @@ def find_runs(count, per_query=80, verbose=False):
             # It's not an issue to skip arbitrary attempts because the samples aren't
             # being evaluated in a particular order. If 80 samples are skipped, they'll
             # be picked up in subsequent runs
-            print('Error sending request. Skipping.')
+            click.secho('Error sending request. Skipping.', fg='red')
             if error_previous:
-                print('Two errors in a row. Bailing.')
+                click.secho('Two errors in a row. Bailing.', bg='red', fg='black')
                 exit(1)
             error_previous = True
             continue
@@ -375,16 +377,16 @@ def find_runs(count, per_query=80, verbose=False):
         try:
             tree = ET.fromstring(req.text)
         except ET.ParseError:
-            print("WARNING: Misformed response from call to eFetch. Skipping.")
+            click.secho("WARNING: Misformed response from call to eFetch. Skipping.", bg='yellow',fg='black')
             if error_previous:
-                print('Two errors in a row. Bailing.')
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
                 exit(1)
             error_previous = True
             continue
         multiple_runs += _record_data(tree, verbose)
         error_previous = False
 
-    print(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.\n\n")
+    click.secho(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.", fg='green')
 
 def _record_data(data, verbose=False):
     """Parses a response from the efetch endpoint that has info about
@@ -428,7 +430,7 @@ def _record_data(data, verbose=False):
             tosave['run'] = tosave['run'][0]
         else:
             if verbose:
-                print(f"MULTIPLE RUNS! {len(tosave['run'])}")
+                click.secho(f"MULTIPLE RUNS: {len(tosave['run'])}", fg='yellow')
             multiple_runs += 1
             delim = ';'
             tosave['run'] = delim.join(tosave['run'])
@@ -476,7 +478,7 @@ def _record_data(data, verbose=False):
         connection.write(towrite, toparam)
     return multiple_runs
 
-def find_asv_data(count=25):
+def find_asv_data(count):
     """
     Runs a heuristic process for inferring which hypervariable regions were
     targeted in an amplicon sequencing project
@@ -497,11 +499,11 @@ def find_asv_data(count=25):
     )
 
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
-    print(f'Found {len(todo)} projects to evaluate')
+    click.secho(f'Found {len(todo)} projects to evaluate')
     cursor = 0
     while cursor < len(todo):
         if cursor % 50 == 0:
-            print(f'COMPLETE: {cursor}')
+            click.secho(f'COMPLETE: {cursor}', fg='green')
 
         proj = todo[cursor]
 
@@ -512,9 +514,9 @@ def find_asv_data(count=25):
         """, (proj,))
 
         asvs = [x[0] for x in data]
-        print(f'{proj}: Found {len(asvs)} ASVs to classify.')
+        click.secho(f'{proj}: Found {len(asvs)} ASVs to classify.')
         results = amplicon.process_project(asvs)
-        print(f'  {results[0]}, {results[1]}')
+        click.secho(f'Region determined: {results[0]}, mean ASV length: {results[1]}')
         connection.write(
             'INSERT INTO asv_inference (project, region, length) VALUES (?,?,?)',
             (proj, results[0], results[1])

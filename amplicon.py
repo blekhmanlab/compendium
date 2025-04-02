@@ -1,6 +1,7 @@
 from collections import defaultdict
 import statistics # for mean
 
+import click
 import skbio
 
 # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2562909/
@@ -65,7 +66,7 @@ def process_project(asvs, verbose=False):
         evaluated += 1
         results[asv] = asv_align(asv)
         if verbose:
-            print(f'{results[asv].query_begin} / {results[asv].query_end} / {results[asv].optimal_alignment_score}')
+            click.secho(f'{results[asv].query_begin} / {results[asv].query_end} / {results[asv].optimal_alignment_score}')
         align_length = results[asv].query_end - results[asv].query_begin
 
         # Only keep matches where more than 70% of bases count toward the score:
@@ -77,21 +78,21 @@ def process_project(asvs, verbose=False):
             if forwards[region] > len(asvs) / 2:
                 start = region
                 if verbose:
-                    print(f'\n\n !!!!\nDetermined start region! {start}')
+                    click.secho(f'Determined start region: {start}', fg='green')
         if end is None:
             region = find_region(results[asv].query_end, direction='r')
             reverses[region] += 1
             if reverses[region] > len(asvs) / 2:
                 end = region
                 if verbose:
-                    print(f'\n\n !!!!\nDetermined end region! {end}')
+                    click.secho(f'Determined end region: {end}', fg='green')
         if start is not None and end is not None:
             break
 
     # If we have the start but not the end:
     if start is not None and end is None:
         if verbose:
-            print(f'Could not determine end region. Using start region and ASV length.')
+            click.secho(f'Could not determine end region. Using start region and ASV length.', fg='yellow')
         startpoint = BOUNDARIES[start][0]
         endpoint = startpoint + avglength
         end = find_region(endpoint, direction='r')
@@ -99,30 +100,30 @@ def process_project(asvs, verbose=False):
     # If we have the END but not the start:
     if start is None and end is not None:
         if verbose:
-            print(f'Could not determine start region. Using end region and ASV length.')
+            click.secho(f'Could not determine start region. Using end region and ASV length.', fg='yellow')
         endpoint = BOUNDARIES[end][1]
 
         startpoint = endpoint - avglength
-        print(f'endpoint is {endpoint}, start is {startpoint}')
+        click.secho(f'Endpoint is {endpoint}, start is {startpoint}', fg='green')
         start = find_region(startpoint, direction='f')
     # In some wonky studies with multiple amplicons, we end
     # up with a "start" region that's after the "end" region.
     # We don't want these.
     if start is not None and end is not None and start > end:
-        print(f'Start region {start} is after end region {end}. Throwing out result.')
+        click.secho(f'Start region {start} is after end region {end}. Throwing out result.', fg='red')
         start = None
         end = None
-    # Print!
+
     assignment = f'{start}{f"-{end}" if end != start else ""}'
     if verbose:
-        print('FORWARD:')
+        click.secho('FORWARD:')
         for v, count in forwards.items():
-            print(f'{v}: {count}')
-        print('REVERSE:')
+            click.secho(f'{v}: {count}')
+        click.secho('REVERSE:')
         for v, count in reverses.items():
-            print(f'{v}: {count}')
+            click.secho(f'{v}: {count}')
 
-        print(f'Evaluated {evaluated} of {len(asvs)} ASVs in {proj}')
-        print(f'Our guess: {assignment}')
-        print(f'Average length is {avglength} +/- {statistics.stdev(lengths)}')
+        click.secho(f'Evaluated {evaluated} of {len(asvs)} ASVs in {proj}')
+        click.secho(f'Our inference: {assignment}')
+        click.secho(f'Average length is {avglength} +/- {statistics.stdev(lengths)}')
     return((assignment, avglength))

@@ -5,6 +5,8 @@ for example.
 """
 import projects
 
+import click
+
 def determine_projects(connection):
     """
     Fetches a list of projects without a terminal status and determines
@@ -19,7 +21,7 @@ def determine_projects(connection):
         WHERE status NOT IN ('done','failed')
     """)
     if todo is None:
-        print('No projects to evaluate. Exiting.')
+        click.secho('No projects to evaluate. Exiting.', fg='yellow')
         exit(0)
 
     todo = [x[0] for x in todo]
@@ -43,15 +45,14 @@ def print_projects_summary(done, running, not_done):
     Helper function that prints out lists of BioProject IDs according
     to status.
     """
-    print('\n===DONE:')
-    [print(f'   {x}') for x in done]
+    click.secho('\n===DONE:', fg='green')
+    [click.secho(f'   {x}', bg='green', fg='black') for x in done]
 
-    print('\n===RUNNING:')
-    [print(f'   {x}') for x in running]
+    click.secho('\n===RUNNING:', fg='yellow')
+    [click.secho(f'   {x}', bg='yellow', fg='black') for x in running]
 
-    print('\n===INCOMPLETE:')
-    [print(f'   {x}') for x in not_done]
-    print('\n===\n===\n')
+    click.secho('\n===INCOMPLETE:', fg='red')
+    [click.secho(f'   {x}', bg='red', fg='black') for x in not_done]
 
 def advance_projects(done, running, not_done, connection, auto=False):
     """
@@ -70,20 +71,20 @@ def advance_projects(done, running, not_done, connection, auto=False):
         return()
 
     if len(running) > 0:
-        print("\n------------\nSome projects are still running:")
+        click.secho("\n------------\nSome projects are still running:", fg='yellow')
     for proj in running:
         confirm = input('Print next project? ')
         if confirm != 'y':
-            print('Response was not "y"; bailing.')
+            click.secho('Response was not "y"; bailing.', fg='red')
             exit(0)
         proj.Report_progress()
 
     if len(not_done) > 0:
-        print("\n------------\nSome projects are incomplete:")
+        click.secho("\n------------\nSome projects are incomplete:", fg='yellow')
     for proj in not_done:
         confirm = input('Print next project? ')
         if confirm != 'y':
-            print('Response was not "y"; bailing.')
+            click.secho('Response was not "y"; bailing.', fg='red')
             exit(0)
         proj.Report_progress()
 
@@ -100,7 +101,7 @@ def find_todo(connection, needed=1, min_samples=50, max_samples=10000):
     else:
         done = [x[0] for x in done_list]
 
-    print(f'Tracking down {needed} projects')
+    click.secho(f'Tracking down {needed} projects')
 
     todo = connection.read("""
     SELECT project
@@ -120,7 +121,7 @@ def find_todo(connection, needed=1, min_samples=50, max_samples=10000):
     """, (min_samples, max_samples, needed))
 
     if todo is None:
-        print('Did not find any projects to process!')
+        click.secho('Did not find any projects to process.', fg='yellow')
         return []
     return [x[0] for x in todo if x not in done]
 
@@ -134,9 +135,9 @@ def print_compendium_summary(connection):
         SELECT COUNT(DISTINCT project), COUNT(srs) FROM samples
     """)
     if counts is None:
-        print('No samples found in samples table.')
+        click.secho('No samples found in samples table.', fg='yellow')
         return()
-    print(f'Samples table contains:\n{counts[0][1]} samples from\n{counts[0][0]} projects.\n')
+    click.secho(f'Samples table contains: {counts[0][1]} samples from {counts[0][0]} projects.\n', fg='green')
 
 
     counts = connection.read("""
@@ -145,14 +146,15 @@ def print_compendium_summary(connection):
             SELECT s.project, ac.sample, COUNT(ac.entryid)
             FROM asv_counts ac
             LEFT JOIN samples s
-                ON ac.sample=s.srs
+                ON ac.sample=s.srr
             GROUP BY 1,2
         )
     """)
+
     if counts is None:
-        print('No projects found in asv_counts table.')
+        click.secho('No projects found in asv_counts table.\n', fg='yellow')
         return()
-    print(f'Results table contains:\n{counts[0][1]} samples from\n{counts[0][0]} projects.\n')
+    click.secho(f'Results table contains: {counts[0][1]} samples from {counts[0][0]} projects.\n', fg='green')
 
     counts = connection.read("""
         SELECT status, COUNT(DISTINCT project)
@@ -160,6 +162,6 @@ def print_compendium_summary(connection):
         GROUP BY 1
         ORDER BY 2 DESC
     """)
-    print('PROJECT STATUS FREQUENCY:')
+    click.secho('PROJECT STATUS FREQUENCY:')
     for entry in counts:
-        print(f'{entry[1]} projects: {entry[0]}')
+        click.secho(f'{entry[1]} projects: {entry[0]}')
