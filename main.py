@@ -16,62 +16,76 @@ import management
 def cli():
     pass
 
-@cli.command()
-@click.option('--todo', default=2000, help='Number of samples to annotate in this run')
-@click.option('--perquery', default=80, help='Number of samples to request in each web request. Mostly limited by URL length.')
-def runs():
-    """Sends requests to the NCBI servers to annotate BioSamples with their SRA run accession codes.
+@cli.group()
+def compendium():
+    pass
+
+@cli.group()
+def project():
+    pass
+
+@compendium.command()
+@click.option('--todo', default=2000, help='Number of samples to annotate in this run', show_default=True)
+@click.option('--perquery', default=80,
+    help='Number of samples to request in each web request. Mostly limited by URL length.',
+    show_default=True)
+def runs(todo, perquery):
+    """Queries the compendium database for samples that have an SRS (sample) number, but not an
+    SRR (run) number. This list is then sent to the NCBI eUtils API to retrieve the runs. This
+    is required for downloading the raw data.
     """
     db.find_runs(todo, per_query=perquery)
 
-@cli.command()
-@click.option('--todo', default=100, help='Number of projects to annotate in this run')
-def asvs():
+@compendium.command(short_help='Infer a hypervariable region used by each project')
+@click.option('--todo', default=100, help='Number of projects to annotate in this run', show_default=True)
+def asvs(todo):
     """Runs a heuristic process for inferring which hypervariable regions were
-    targeted in an amplicon sequencing project.
+    targeted in an amplicon sequencing project. Records data in the "projects" table.
     """
-    db.find_asv_data(100)
+    db.find_asv_data(todo)
 
-@cli.command()
+@compendium.command()
 @click.argument('taxid')
 @click.argument('file')
-def xml():
-    """Parse exported BioSample search results. This loads sample data, but
-    skips key/value pairs associated with each sample.
+@click.option('--tags/--skip-tags', default=True, show_default=True,
+    help='Indicates whether sample metadata, included in the XML file as key/value pairs,\
+    should be recorded in the database.')
+def xml(taxid, file, tags):
+    """Parse exported BioSample search results and load sample data into the database.
 
     TAXID is the NCBI taxon ID associated with your samples (e.g. txid408170)
     FILE is the relative path to the XML file to be loaded (e.g. txid408170.xml)
     """
-    db.load_xml(taxid, file, save_samples=True, save_tags=False)
+    db.load_xml(taxid, file, save_samples=True, save_tags=tags)
 
-@cli.command()
-@click.argument('taxid')
-@click.argument('file')
-def tags():
-    """Parse exported BioSample search results. This loads key/value pairs associated
-    with each sample, but does not populate the "samples" table itself.
-
-    TAXID is the NCBI taxon ID associated with your samples (e.g. txid408170)
-    FILE is the relative path to the XML file to be loaded (e.g. txid408170.xml)
-    """
-    db.load_xml(taxid, file, save_samples=False, save_tags=True)
-
-@cli.command()
+@project.command()
 @click.argument('projectid')
-def runit():
+def runit(projectid):
     """Process a single project for the first time.
+    Initializes the processing pipeline for a single project and starts the pipeline.
+    This is generally used to start the pipeline *for the first time*, because it
+    creates a new directory for the project and pulls in all the necessary pipeline
+    code. It will throw a warning if the project has been initialized before, but
+    you can safely proceed if the previous run has been removed and you really do
+    want to start over completely.
 
-    PROJECTID is a BioProject ID (e.g. PRJNA12345)
+    This will retrieve and process the actual FASTQ files.
+
+    PROJECTID is a BioProject ID (e.g. PRJNA12345) of a project for which the
+        metadata is already in our database.
     """
     proj = projects.Project(project)
     connection = db.Connection()
     proj.initialize_pipeline(connection)
     proj.RUN(connection)
 
-@cli.command()
+@project.command()
 @click.argument('projectid')
-def discard():
-    """Clean up a failed project.
+def discard(projectid):
+    """Throws out any computational results from a single project and records in the
+    database that the project should not be re-attempted. Will also prompt you for
+    a brief explanation of why it should be skipped. The only parameter is the
+    BioProject ID of the project to be thrown out.
 
     PROJECTID is a BioProject ID (e.g. PRJNA12345)
     """
@@ -88,10 +102,14 @@ def discard():
     connection = db.Connection()
     proj.Discard(connection)
 
-@cli.command()
+@project.command()
 @click.argument('projectid')
-def again():
-    """Retry a failed project.
+def again(projectid):
+    """Submits a new slurm job to restart the snakemake pipeline for a single
+    project. *This command assumes the pipeline has already been configured.*
+    Used mostly for situations in which a project stalled for reasons that
+    have been remediated. One parameter, the BioProject ID of the project to
+    be restarted.
 
     PROJECTID is a BioProject ID (e.g. PRJNA12345)
     """
@@ -99,10 +117,11 @@ def again():
     connection = db.Connection()
     proj.RUN(connection)
 
-@cli.command()
+@project.command()
 @click.argument('projectid')
-def status():
-    """Check the status of a single project.
+def status(projectid):
+    """Retrieves the pipeline progress of a single project and prints a
+    report for the user.
 
     PROJECTID is a BioProject ID (e.g. PRJNA12345)
     """
@@ -113,11 +132,14 @@ def status():
     else:
         proj.Report_progress()
 
-@cli.command()
+@project.command()
 @click.argument('projectid')
-def eval():
-    """Evaluate the progress of a single project and process
-    its results into the database if appropriate.
+def eval(projectid):
+    """Checks the progress of a single study. If it's completed the pipeline,
+    it will evaluate the results and prompt the user to confirm that the
+    project should either be saved and finalized, OR should be re-run with
+    different parameters. One parameter, the BioProject ID of the project to
+    check on.
 
     PROJECTID is a BioProject ID (e.g. PRJNA12345)
     """
@@ -129,15 +151,15 @@ def eval():
         connection = db.Connection()
         proj.REACT(connection)
 
-@cli.command()
-def compendium():
+@compendium.command()
+def summary():
     """Summarize the content of the compendium.
     """
     connection = db.Connection()
     management.print_compendium_summary(connection)
 
-@cli.command()
-def summary():
+@compendium.command()
+def status():
     """Summarize the status of any projects with steps
     remaining in their processing pipeline.
     """
@@ -145,7 +167,7 @@ def summary():
     current = management.determine_projects(connection)
     management.print_projects_summary(*current)
 
-@cli.command()
+@compendium.command()
 def FORWARD():
     """Interactive process for evaluating all currently pending
     projects. Prompts the user to decide how to deal with
@@ -156,11 +178,11 @@ def FORWARD():
     management.print_projects_summary(*current)
     management.advance_projects(*current, connection)
 
-@cli.command()
+@compendium.command()
 def autoforward():
-    """Interactive process for evaluating all currently pending
-    projects. Prompts the user to decide how to deal with
-    results.
+    """Similar to FORWARD, but automatically approves actions that need to be
+    taken. If projects are completed, the application will then search for
+    new projects to start.
 
     Unlike the FORWARD command, this launches new projects as
     others are completed.
