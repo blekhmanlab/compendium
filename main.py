@@ -74,7 +74,7 @@ def runit(projectid):
     PROJECTID is a BioProject ID (e.g. PRJNA12345) of a project for which the
         metadata is already in our database.
     """
-    proj = projects.Project(project)
+    proj = projects.Project(projectid)
     connection = db.Connection()
     proj.initialize_pipeline(connection)
     proj.RUN(connection)
