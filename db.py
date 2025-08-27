@@ -181,10 +181,16 @@ class Connection(object):
         """)
 
         self.write("""
-            CREATE TABLE IF NOT EXISTS asv_inference (
+            CREATE TABLE IF NOT EXISTS projects (
                 project TEXT PRIMARY KEY,
                 region TEXT,
-                length REAL
+                length REAL,
+                beating TEXT,
+                title TEXT,
+                description TEXT,
+                grant_id TEXT,
+                grant_title TEXT,
+                grant_agency TEXT
             )
         """)
 
@@ -477,6 +483,180 @@ def _record_data(data, verbose=False):
 
         connection.write(towrite, toparam)
     return multiple_runs
+
+def fetch_projectinfo(count, per_query, verbose=False):
+    """
+    Queries the NCBI eUtils API to use project IDs ("PRJ" codes)
+    to get basic metadata such as title and description.
+
+    Inputs:
+        - count: int. The upper limit for how many entries to search in total.
+        - per_query: int. The number of entries to request in each web request
+    """
+    connection = Connection()
+
+    todo = connection.read("""
+        SELECT project FROM projects
+        WHERE title IS NULL
+        ORDER BY RANDOM()
+        LIMIT ?""", (count,)
+    )
+
+    todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
+    click.secho(f'Found {len(todo)} projects to process')
+    cursor = 0
+    multiple_runs = 0
+    since_update = 0
+    lap1 = datetime.now()
+
+    error_previous = False # if we get two timeouts in a row, just stop
+
+    while cursor < len(todo):
+        url = config.project_esearch_url
+        # Build up the URL project by project:
+        for _ in range(0, per_query):
+            url += f'{todo[cursor]} or '
+            cursor += 1
+            since_update += 1
+            if cursor == len(todo):
+                break # in case the total isn't a multiple of "per_query"
+        url = url[:-4] # trim off trailing " or "
+        if len(url) >1950:
+            click.secho(url, fg='red')
+            click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
+            exit(1)
+
+        if verbose:
+            click.secho('Next request', fg='green')
+        time.sleep(config.callpause)
+
+        try:
+            req = requests.get(url, timeout=config.timeout)
+        except requests.exceptions.HTTPError:
+            click.secho('ERROR: Error sending request for webenv data. Skipping.', fg='red')
+            if error_previous:
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                exit(1)
+            error_previous = True
+            continue
+
+        try:
+            tree = ET.fromstring(req.text)
+        except ET.ParseError:
+            click.secho(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}', fg='red')
+            click.secho('Skipping.', fg='red')
+            if error_previous:
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                exit(1)
+            error_previous = True
+            continue
+
+        webenv = tree.find('WebEnv')
+        if webenv is None:
+            click.secho('\n---------\n')
+            click.secho(req.text)
+            click.secho("WARNING: Got response without a 'webenv' field. Skipping.", bg='yellow',fg='black')
+            if error_previous:
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                exit(1)
+            error_previous = True
+            continue
+
+        url = f'{config.project_efetch_url}&WebEnv={webenv.text}'
+        if len(url) >1950:
+            click.secho(url, fg='red')
+            click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
+            exit(1)
+
+        try:
+            req = requests.get(url, timeout=config.timeout)
+        except Exception as e:
+            # It's not an issue to skip arbitrary attempts because the samples aren't
+            # being evaluated in a particular order. If 80 samples are skipped, they'll
+            # be picked up in subsequent runs
+            click.secho('Error sending request. Skipping.', fg='red')
+            if error_previous:
+                click.secho('Two errors in a row. Bailing.', bg='red', fg='black')
+                exit(1)
+            error_previous = True
+            continue
+
+        try:
+            tree = ET.fromstring(req.text)
+        except ET.ParseError:
+            click.secho("WARNING: Misformed response from call to eFetch. Skipping.", bg='yellow',fg='black')
+            if error_previous:
+                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                exit(1)
+            error_previous = True
+            continue
+        asdf = _record_project_data(tree, verbose)
+        error_previous = False
+
+    click.secho(f"\n\nDone??", fg='green')
+
+def _record_project_data(data, verbose=False):
+    """Parses a response from the efetch endpoint that has info about
+    all the samples in the query."""
+    connection = Connection()
+
+    multiple_runs = 0
+
+    for package in data.findall('DocumentSummary'):
+        proj = None
+        tosave = {}
+
+        for entry in package.iter('ArchiveID'):
+            if 'accession' in entry.attrib.keys():
+                proj = entry.attrib['accession']
+        for entry in package.iter('ProjectDescr'):
+            for entry2 in entry.iter('Title'):
+                tosave['proj_title'] = entry2.text
+            for entry2 in entry.iter('Description'):
+                tosave['proj_desc'] = entry2.text
+            for entry2 in entry.iter('Grant'):
+                if 'GrantId' in entry2.attrib.keys():
+                   tosave['grant_id'] = entry2.attrib['GrantId']
+                for entry3 in entry2.iter('Agency'):
+                    if 'abbr' in entry3.attrib.keys():
+                        tosave['grant_agency'] = entry3.attrib['abbr']
+                for entry3 in entry2.iter('Title'):
+                    tosave['grant_title'] = entry3.text
+        # If there is no SRA run identified, SKIP this entry.
+        # Sometimes a sample will have multiple entries, one with
+        # a run (and lots of metadata) and another without any info
+        # but DIFFERENT metadata. We only want ones that have a run.
+        if proj is None:
+            continue
+
+        towrite = """
+            UPDATE projects
+            SET """
+        toparam = []
+
+        if tosave.get('proj_title') is not None:
+            towrite += 'title=?, '
+            toparam.append(tosave.get('proj_title'))
+        if tosave.get('proj_desc') is not None:
+            towrite += 'description=?, '
+            toparam.append(tosave.get('proj_desc'))
+        if tosave.get('grant_id') is not None:
+            towrite += 'grant_id=?, '
+            toparam.append(tosave.get('grant_id'))
+        if tosave.get('grant_agency') is not None:
+            towrite += 'grant_agency=?, '
+            toparam.append(tosave.get('grant_agency'))
+        if tosave.get('grant_title') is not None:
+            towrite += 'grant_title=?, '
+            toparam.append(tosave.get('grant_title'))
+
+        towrite = towrite[:-2] # chop off final comma and space
+        towrite += """
+            WHERE project=?"""
+        toparam.append(proj)
+        toparam = tuple(toparam)
+        connection.write(towrite, toparam)
+    return
 
 def find_asv_data(count):
     """

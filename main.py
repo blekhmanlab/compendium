@@ -58,6 +58,17 @@ def xml(taxid, file, tags):
     """
     db.load_xml(taxid, file, save_samples=True, save_tags=tags)
 
+@compendium.command(short_help='Retrieve BioProject metadata')
+@click.option('--todo', default=100, help='Number of projects to annotate in this run', show_default=True)
+@click.option('--perquery', default=20,
+    help='Number of samples to request in each web request. Mostly limited by URL length.',
+    show_default=True)
+def bioprojects(todo, perquery):
+    """Calls the NCBI eUtils API to retrieve basic information about BioProjects
+    such as title and grant associations.
+    """
+    db.fetch_projectinfo(todo, per_query=perquery)
+
 @project.command()
 @click.argument('projectid')
 def runit(projectid):
