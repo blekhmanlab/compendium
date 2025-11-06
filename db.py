@@ -229,48 +229,41 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     recognized_tags = connection.read('SELECT DISTINCT srs FROM tags ORDER BY 1')
     recognized_tags = [x[0] for x in recognized_tags]
 
-    for sample in biosamples:
-        done += 1
-        if done % 10000 == 0:
-            click.secho(f'   {done} out of {len(biosamples)} complete.', fg='green')
-        # find SRA ID of sample
-        # example: <BioSample> <Ids> <Id db="SRA">SRS5588834</Id> </Ids> </BioSample>
-        sra = None
-        for entry in sample.iter('Id'):
-            if 'db' in entry.attrib.keys() and entry.attrib['db'] == 'SRA':
-                sra = entry.text
-        if sra is None:
-            skipped += 1
-            if skipped % 1000 == 0:
-                click.secho(f'Skipped {skipped} samples so far.')
-            continue # skip samples without an SRA sample
+    with click.progressbar(biosamples) as bar:
+        for sample in bar:
+            sra = None
+            for entry in sample.iter('Id'):
+                if 'db' in entry.attrib.keys() and entry.attrib['db'] == 'SRA':
+                    sra = entry.text
+            if sra is None:
+                skipped += 1
+                continue # skip samples without an SRA sample
 
-        #  NOTE: we used to check for BioProject ID here,
-        #  but for some reason half the samples don't list a bioproject
-        #  even if they have one.
+            #  NOTE: we used to check for BioProject ID here,
+            #  but for some reason half the samples don't list a bioproject
+            #  even if they have one.
 
-        if save_samples and sra not in recognized_samples:
-            connection.write('INSERT INTO samples (srs, taxon) VALUES (?, ?);', (sra, taxon))
+            if save_samples and sra not in recognized_samples:
+                connection.write('INSERT INTO samples (srs, taxon) VALUES (?, ?);', (sra, taxon))
 
-        if save_tags and sra not in recognized_tags:
-            # go through all the attributes and tally them
-            all_tags = {}
-            for tag in sample.iter('Attribute'):
-                if tag is None or tag.text is None: # some tags don't have values
-                    continue
-                text = tag.text.lower()
-                if 'harmonized_name' in tag.attrib.keys():
-                    all_tags[tag.attrib['harmonized_name']] = text
-                elif 'attribute_name' in tag.attrib.keys():
-                    all_tags[tag.attrib['attribute_name']] = text
-            # add all the tags to the tag table
-            sql = 'INSERT INTO tags (srs, tag, value) VALUES (?,?,?);'
-            params = [(sra, tag, value) for (tag, value) in all_tags.items()]
-            connection.write(sql, params)
+            if save_tags and sra not in recognized_tags:
+                # go through all the attributes and tally them
+                all_tags = {}
+                for tag in sample.iter('Attribute'):
+                    if tag is None or tag.text is None: # some tags don't have values
+                        continue
+                    text = tag.text.lower()
+                    if 'harmonized_name' in tag.attrib.keys():
+                        all_tags[tag.attrib['harmonized_name']] = text
+                    elif 'attribute_name' in tag.attrib.keys():
+                        all_tags[tag.attrib['attribute_name']] = text
+                # add all the tags to the tag table
+                sql = 'INSERT INTO tags (srs, tag, value) VALUES (?,?,?);'
+                params = [(sra, tag, value) for (tag, value) in all_tags.items()]
+                connection.write(sql, params)
 
     click.secho(f'{len(biosamples)} total samples evaluated, {skipped} skipped')
     # TODO: check if we recorded tags for samples that we skipped
-
 
 def find_runs(count, per_query, verbose=False):
     """
@@ -293,104 +286,93 @@ def find_runs(count, per_query, verbose=False):
 
     todo = [x[0] for x in todo] # each ID is nested inside a tuple of length 1
     click.secho(f'Found {len(todo)} samples to process')
-    cursor = 0
     multiple_runs = 0
     since_update = 0
     lap1 = datetime.now()
 
     error_previous = False # if we get two timeouts in a row, just stop
 
-    while cursor < len(todo):
-        # If we send requests 70 or 80 samples at a time,
-        # we can't just use (cursor % 1000 == 0) to decide
-        # when to update the user, because the cursor will probably skip
-        # right over the round numbers
-        if since_update > 5000:
-            lap2 = datetime.now()
-            click.secho(f'COMPLETE: {cursor} ({(lap2-lap1).total_seconds()} seconds)', fg='green')
-            since_update = 0
-            lap1 = lap2
+    with click.progressbar(list(range(0,len(todo), per_query))) as starts:
+        for start in starts:
+            if(len(todo[start:start+per_query]) == 0):
+                # If we end up with an extra call with 0 accessions, we're done
+                break
+            url = config.esearch_url
+            url += '[accn] or '.join(todo[start:start+per_query])
+            url += '[accn]'
 
-        url = config.esearch_url
-        # Build up the URL project by project:
-        for _ in range(0, per_query):
-            url += f'{todo[cursor]}[accn] or '
-            cursor += 1
-            since_update += 1
-            if cursor == len(todo):
-                break # in case the total isn't a multiple of "per_query"
-        url = url[:-4] # trim off trailing " or "
-        if len(url) >1950:
-            click.secho(url, fg='red')
-            click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
-            exit(1)
-
-        if verbose:
-            click.secho('Next request', fg='green')
-        time.sleep(config.callpause)
-
-        try:
-            req = requests.get(url, timeout=config.timeout)
-        except requests.exceptions.HTTPError:
-            click.secho('ERROR: Error sending request for webenv data. Skipping.', fg='red')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+            url = url[:-4] # trim off trailing " or "
+            if len(url) >1950:
+                click.secho(url, fg='red')
+                click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
                 exit(1)
-            error_previous = True
-            continue
 
-        try:
-            tree = ET.fromstring(req.text)
-        except ET.ParseError:
-            click.secho(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}', fg='red')
-            click.secho('Skipping.', fg='red')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+            if verbose:
+                click.secho('Next request', fg='green')
+            time.sleep(config.callpause)
+
+            try:
+                req = requests.get(url, timeout=config.timeout)
+            except requests.exceptions.HTTPError:
+                click.secho('ERROR: Error sending request for webenv data. Skipping.', fg='red')
+                if error_previous:
+                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                    exit(1)
+                error_previous = True
+                continue
+
+            try:
+                tree = ET.fromstring(req.text)
+            except ET.ParseError:
+                click.secho(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}', fg='red')
+                click.secho('Skipping.', fg='red')
+                if error_previous:
+                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                    exit(1)
+                error_previous = True
+                continue
+
+            webenv = tree.find('WebEnv')
+            if webenv is None:
+                click.secho('\n---------\n')
+                click.secho(req.text)
+                click.secho("WARNING: Got response without a 'webenv' field. Skipping.", bg='yellow',fg='black')
+                if error_previous:
+                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                    exit(1)
+                error_previous = True
+                continue
+
+            url = f'{config.efetch_url}&WebEnv={webenv.text}'
+            if len(url) >1950:
+                click.secho(url, fg='red')
+                click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
                 exit(1)
-            error_previous = True
-            continue
 
-        webenv = tree.find('WebEnv')
-        if webenv is None:
-            click.secho('\n---------\n')
-            click.secho(req.text)
-            click.secho("WARNING: Got response without a 'webenv' field. Skipping.", bg='yellow',fg='black')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
-                exit(1)
-            error_previous = True
-            continue
+            try:
+                req = requests.get(url, timeout=config.timeout)
+            except Exception as e:
+                # It's not an issue to skip arbitrary attempts because the samples aren't
+                # being evaluated in a particular order. If 80 samples are skipped, they'll
+                # be picked up in subsequent runs
+                click.secho('Error sending request. Skipping.', fg='red')
+                if error_previous:
+                    click.secho('Two errors in a row. Bailing.', bg='red', fg='black')
+                    exit(1)
+                error_previous = True
+                continue
 
-        url = f'{config.efetch_url}&WebEnv={webenv.text}'
-        if len(url) >1950:
-            click.secho(url, fg='red')
-            click.secho('\n\n\nURL IS TOO LONG! Bailing to avoid cutting off request.', fg='red')
-            exit(1)
-
-        try:
-            req = requests.get(url, timeout=config.timeout)
-        except Exception as e:
-            # It's not an issue to skip arbitrary attempts because the samples aren't
-            # being evaluated in a particular order. If 80 samples are skipped, they'll
-            # be picked up in subsequent runs
-            click.secho('Error sending request. Skipping.', fg='red')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red', fg='black')
-                exit(1)
-            error_previous = True
-            continue
-
-        try:
-            tree = ET.fromstring(req.text)
-        except ET.ParseError:
-            click.secho("WARNING: Misformed response from call to eFetch. Skipping.", bg='yellow',fg='black')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
-                exit(1)
-            error_previous = True
-            continue
-        multiple_runs += _record_data(tree, verbose)
-        error_previous = False
+            try:
+                tree = ET.fromstring(req.text)
+            except ET.ParseError:
+                click.secho("WARNING: Misformed response from call to eFetch. Skipping.", bg='yellow',fg='black')
+                if error_previous:
+                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                    exit(1)
+                error_previous = True
+                continue
+            multiple_runs += _record_data(tree, verbose)
+            error_previous = False
 
     click.secho(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.", fg='green')
 
