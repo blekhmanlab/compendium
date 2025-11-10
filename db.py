@@ -320,6 +320,14 @@ def find_runs(count, per_query, verbose=False):
                     exit(1)
                 error_previous = True
                 continue
+            except requests.exceptions.ReadTimeout:
+                click.secho('ERROR: Timeout sending request for webenv data. Skipping in 10 seconds.', fg='red')
+                time.sleep(30)
+                if error_previous:
+                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                    exit(1)
+                error_previous = True
+                continue
 
             try:
                 tree = ET.fromstring(req.text)
