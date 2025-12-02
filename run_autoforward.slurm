@@ -7,6 +7,6 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=rabdill@uchicago.edu
 
-module load python
+module load python/3.11.9
 source venv/bin/activate
 python main.py autoforward

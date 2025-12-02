@@ -29,12 +29,15 @@ def project():
 @click.option('--perquery', default=80,
     help='Number of samples to request in each web request. Mostly limited by URL length.',
     show_default=True)
-def runs(todo, perquery):
+@click.option('--maxerr', default=2,
+    help='When sending web requests, how many consecutive errors should we tolerate before the process is stopped?',
+    show_default=True)
+def runs(todo, perquery, maxerr):
     """Queries the compendium database for samples that have an SRS (sample) number, but not an
     SRR (run) number. This list is then sent to the NCBI eUtils API to retrieve the runs. This
     is required for downloading the raw data.
     """
-    db.find_runs(todo, per_query=perquery)
+    db.find_runs(todo, perquery, maxerr)
 
 @compendium.command(short_help='Infer a hypervariable region used by each project')
 @click.option('--todo', default=100, help='Number of projects to annotate in this run', show_default=True)
@@ -63,11 +66,14 @@ def xml(taxid, file, tags):
 @click.option('--perquery', default=20,
     help='Number of samples to request in each web request. Mostly limited by URL length.',
     show_default=True)
-def bioprojects(todo, perquery):
+@click.option('--maxerr', default=2,
+    help='When sending web requests, how many consecutive errors should we tolerate before the process is stopped?',
+    show_default=True)
+def bioprojects(todo, perquery, maxerr):
     """Calls the NCBI eUtils API to retrieve basic information about BioProjects
     such as title and grant associations.
     """
-    db.fetch_projectinfo(todo, per_query=perquery)
+    db.fetch_projectinfo(todo, per_query, maxerr)
 
 @project.command()
 @click.argument('projectid')

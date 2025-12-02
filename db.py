@@ -265,7 +265,7 @@ def load_xml(taxon, filename, save_samples=True, save_tags=False):
     click.secho(f'{len(biosamples)} total samples evaluated, {skipped} skipped')
     # TODO: check if we recorded tags for samples that we skipped
 
-def find_runs(count, per_query, verbose=False):
+def find_runs(count, per_query, consec_err, verbose=False):
     """
     Queries the NCBI eUtils API to use sample IDs ("SRS" codes)
     to get information about runs ("SRR" codes) that can then
@@ -290,7 +290,7 @@ def find_runs(count, per_query, verbose=False):
     since_update = 0
     lap1 = datetime.now()
 
-    error_previous = False # if we get two timeouts in a row, just stop
+    errcount = 0 # if we get too many timeouts in a row, just stop
 
     with click.progressbar(list(range(0,len(todo), per_query))) as starts:
         for start in starts:
@@ -315,18 +315,18 @@ def find_runs(count, per_query, verbose=False):
                 req = requests.get(url, timeout=config.timeout)
             except requests.exceptions.HTTPError:
                 click.secho('ERROR: Error sending request for webenv data. Skipping.', fg='red')
-                if error_previous:
-                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                errcount += 1
+                if errcount >= consec_err:
+                    click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                     exit(1)
-                error_previous = True
                 continue
             except requests.exceptions.ReadTimeout:
                 click.secho('ERROR: Timeout sending request for webenv data. Skipping in 10 seconds.', fg='red')
                 time.sleep(30)
-                if error_previous:
-                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                errcount += 1
+                if errcount >= consec_err:
+                    click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                     exit(1)
-                error_previous = True
                 continue
 
             try:
@@ -334,10 +334,11 @@ def find_runs(count, per_query, verbose=False):
             except ET.ParseError:
                 click.secho(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}', fg='red')
                 click.secho('Skipping.', fg='red')
-                if error_previous:
-                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                errcount += 1
+                if errcount >= consec_err:
+                    click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                     exit(1)
-                error_previous = True
+                continue
                 continue
 
             webenv = tree.find('WebEnv')
@@ -345,10 +346,11 @@ def find_runs(count, per_query, verbose=False):
                 click.secho('\n---------\n')
                 click.secho(req.text)
                 click.secho("WARNING: Got response without a 'webenv' field. Skipping.", bg='yellow',fg='black')
-                if error_previous:
-                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                errcount += 1
+                if errcount >= consec_err:
+                    click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                     exit(1)
-                error_previous = True
+                continue
                 continue
 
             url = f'{config.efetch_url}&WebEnv={webenv.text}'
@@ -364,23 +366,23 @@ def find_runs(count, per_query, verbose=False):
                 # being evaluated in a particular order. If 80 samples are skipped, they'll
                 # be picked up in subsequent runs
                 click.secho('Error sending request. Skipping.', fg='red')
-                if error_previous:
-                    click.secho('Two errors in a row. Bailing.', bg='red', fg='black')
+                errcount += 1
+                if errcount >= consec_err:
+                    click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                     exit(1)
-                error_previous = True
                 continue
 
             try:
                 tree = ET.fromstring(req.text)
             except ET.ParseError:
                 click.secho("WARNING: Misformed response from call to eFetch. Skipping.", bg='yellow',fg='black')
-                if error_previous:
-                    click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+                errcount += 1
+                if errcount >= consec_err:
+                    click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                     exit(1)
-                error_previous = True
                 continue
             multiple_runs += _record_data(tree, verbose)
-            error_previous = False
+            consec_err = 0
 
     click.secho(f"\n\nTOTAL SAMPLES WITH MULTIPLE RUNS: {multiple_runs}.", fg='green')
 
@@ -474,7 +476,7 @@ def _record_data(data, verbose=False):
         connection.write(towrite, toparam)
     return multiple_runs
 
-def fetch_projectinfo(count, per_query, verbose=False):
+def fetch_projectinfo(count, per_query, consec_err, verbose=False):
     """
     Queries the NCBI eUtils API to use project IDs ("PRJ" codes)
     to get basic metadata such as title and description.
@@ -499,7 +501,7 @@ def fetch_projectinfo(count, per_query, verbose=False):
     since_update = 0
     lap1 = datetime.now()
 
-    error_previous = False # if we get two timeouts in a row, just stop
+    consec_err = 0 # if we get too many timeouts in a row, just stop
 
     while cursor < len(todo):
         url = config.project_esearch_url
@@ -524,10 +526,10 @@ def fetch_projectinfo(count, per_query, verbose=False):
             req = requests.get(url, timeout=config.timeout)
         except requests.exceptions.HTTPError:
             click.secho('ERROR: Error sending request for webenv data. Skipping.', fg='red')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+            errcount += 1
+            if errcount >= consec_err:
+                click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                 exit(1)
-            error_previous = True
             continue
 
         try:
@@ -535,10 +537,10 @@ def fetch_projectinfo(count, per_query, verbose=False):
         except ET.ParseError:
             click.secho(f'ERROR: Couldnt parse response retrieving webenv data: {req.text}', fg='red')
             click.secho('Skipping.', fg='red')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+            errcount += 1
+            if errcount >= consec_err:
+                click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                 exit(1)
-            error_previous = True
             continue
 
         webenv = tree.find('WebEnv')
@@ -546,10 +548,10 @@ def fetch_projectinfo(count, per_query, verbose=False):
             click.secho('\n---------\n')
             click.secho(req.text)
             click.secho("WARNING: Got response without a 'webenv' field. Skipping.", bg='yellow',fg='black')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+            errcount += 1
+            if errcount >= consec_err:
+                click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                 exit(1)
-            error_previous = True
             continue
 
         url = f'{config.project_efetch_url}&WebEnv={webenv.text}'
@@ -565,23 +567,23 @@ def fetch_projectinfo(count, per_query, verbose=False):
             # being evaluated in a particular order. If 80 samples are skipped, they'll
             # be picked up in subsequent runs
             click.secho('Error sending request. Skipping.', fg='red')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red', fg='black')
+            errcount += 1
+            if errcount >= consec_err:
+                click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                 exit(1)
-            error_previous = True
             continue
 
         try:
             tree = ET.fromstring(req.text)
         except ET.ParseError:
             click.secho("WARNING: Misformed response from call to eFetch. Skipping.", bg='yellow',fg='black')
-            if error_previous:
-                click.secho('Two errors in a row. Bailing.', bg='red',fg='black')
+            errcount += 1
+            if errcount >= consec_err:
+                click.secho(f'Configured limit: {consec_err} consecutive errors. Bailing.', bg='red',fg='black')
                 exit(1)
-            error_previous = True
             continue
         asdf = _record_project_data(tree, verbose)
-        error_previous = False
+        consec_err = 0
 
     click.secho(f"\n\nDone??", fg='green')
 
